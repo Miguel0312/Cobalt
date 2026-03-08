@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define ERROR_MSG_BUFFER_SIZE 256
+#define MSG_BUFFER_SIZE 256
 
 Scanner *new_scanner(char *src, unsigned long src_len) {
   Scanner *scanner = malloc(sizeof(Scanner));
@@ -132,7 +132,7 @@ List *scan_tokens(Scanner *scanner) {
     }
     default: {
       int found = 0;
-      char msg[ERROR_MSG_BUFFER_SIZE];
+      char msg[MSG_BUFFER_SIZE];
       if (isalpha(c) || c == '_') {
         found = read_identifier(scanner, msg);
         if (found) {
@@ -145,13 +145,13 @@ List *scan_tokens(Scanner *scanner) {
           scanner_add_token(scanner, INT_LITERAL);
         }
       } else {
-        snprintf(msg, ERROR_MSG_BUFFER_SIZE, "Unexpected character: %c", c);
+        snprintf(msg, MSG_BUFFER_SIZE, "Unexpected character: %c", c);
       }
 
       if (found)
         break;
 
-      msg[ERROR_MSG_BUFFER_SIZE - 1] = '\0';
+      msg[MSG_BUFFER_SIZE - 1] = '\0';
 
       scanner_report_error(scanner, msg);
     }
@@ -188,7 +188,7 @@ void scanner_add_token(Scanner *scanner, TokenType type) {
 
   strncpy(lexeme, scanner->src + scanner->start, lexeme_len);
 
-  Token *token = new_token(type, lexeme);
+  Token *token = new_token(type, lexeme, scanner->line);
 
   list_append(scanner->tokens, token);
 }
@@ -232,7 +232,7 @@ int read_number(Scanner *scanner, char *error_msg) {
 
   char c = scanner_peek(scanner);
   if (isalpha(c) || c == '_') {
-    snprintf(error_msg, ERROR_MSG_BUFFER_SIZE,
+    snprintf(error_msg, MSG_BUFFER_SIZE,
              "Unexpected character while trying to parse number: %c", c);
     return 0;
   }
@@ -242,7 +242,12 @@ int read_number(Scanner *scanner, char *error_msg) {
 
 TokenType get_keyword(Scanner *scanner) {
   int lexeme_len = scanner->cur - scanner->start;
-  char *lexeme = malloc(lexeme_len + 1);
+  if (lexeme_len >= MSG_BUFFER_SIZE) {
+    // Definitely an identifier, no keyword is so big
+    return IDENTIFIER;
+  }
+  char lexeme[MSG_BUFFER_SIZE];
+  strncpy(lexeme, scanner->src + scanner->start, lexeme_len);
   lexeme[lexeme_len] = '\0';
 
   if (strcmp(lexeme, "int") == 0) {
@@ -259,6 +264,9 @@ TokenType get_keyword(Scanner *scanner) {
   }
   if (strcmp(lexeme, "while") == 0) {
     return WHILE;
+  }
+  if (strcmp(lexeme, "return") == 0) {
+    return RETURN;
   }
 
   return IDENTIFIER;

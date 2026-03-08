@@ -39,8 +39,9 @@ typedef struct {
   TokenType type;
   char *lexeme;
   void *value;
+  int line;
 } Token;
 
-Token *new_token(TokenType type, char *lexeme);
+Token *new_token(TokenType type, char *lexeme, int line);
 
 #endif // !TOKEN_H

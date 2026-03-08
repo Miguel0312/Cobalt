@@ -1,4 +1,6 @@
+#include "frontend/parser.h"
 #include "frontend/scanner.h"
+#include "ir/expr.h"
 #include "utils/list.h"
 #include <assert.h>
 #include <stdio.h>
@@ -27,23 +29,31 @@ int main(int argc, char **argv) {
   fclose(f);
 
   Scanner *scanner = new_scanner(buffer, length);
+
+  assert(scanner != NULL);
+  assert(scanner->tokens != NULL);
+
   if (scanner->hasError) {
     fprintf(stderr, "Error while scanning. Exiting.");
     return 1;
   }
 
-  assert(scanner != NULL);
-  assert(scanner->tokens != NULL);
-  assert(scanner->tokens->root != NULL);
-  Node *cur = scanner->tokens->root;
+  Parser *parser = new_parser(scanner->tokens);
+
+  assert(parser != NULL);
+  assert(parser->program != NULL);
+
+  if (parser->hasError) {
+    fprintf(stderr, "Error while parsing. Exiting.");
+    return 1;
+  }
+
+  Node *cur = parser->program->root;
   while (cur != NULL) {
-    Token *token = (Token *)cur->data;
-    if (token->type == EOF_TOKEN)
-      break;
-    if (token->lexeme == NULL) {
-      continue;
-    }
-    printf("%s %d\n", token->lexeme, token->type);
+    Expr *expr = cur->data;
+
+    print_expr(expr);
+
     cur = cur->next;
   }
 

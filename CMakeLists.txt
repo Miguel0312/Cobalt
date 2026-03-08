@@ -9,10 +9,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 set(SOURCE_FILES src/main.c
+  src/frontend/parser.c
+  src/frontend/parser.h
   src/frontend/scanner.c
   src/frontend/scanner.h
   src/frontend/token.c
   src/frontend/token.h
+  src/ir/expr.h
+  src/ir/expr.c
   src/utils/list.h
   src/utils/list.c)
 
