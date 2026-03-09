@@ -1,3 +1,4 @@
+#include "backend/code_gen.h"
 #include "frontend/parser.h"
 #include "frontend/scanner.h"
 #include "ir/expr.h"
@@ -56,6 +57,10 @@ int main(int argc, char **argv) {
 
     cur = cur->next;
   }
+
+  f = fopen("test.s", "w+");
+  CodeGenerator *code_gen = new_code_generator(parser->program, f);
+  fclose(f);
 
   return 0;
 }
