@@ -6,18 +6,27 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
+#define CALL_ERROR 1
+#define FILE_NOT_FOUND_ERROR 2
+#define SCANNING_ERROR 3
+#define PARSING_ERROR 4
+#define CODE_GEN_ERROR 5
 
 int main(int argc, char **argv) {
-  if (argc != 2) {
-    fprintf(stderr, "Usage: cobalt <file_name>");
-    return 1;
+  fprintf(stderr, "%d\n", argc);
+  if (argc < 2) {
+    fprintf(stderr, "%d\n", argc);
+    fprintf(stderr, "Usage: cobalt <file_name> [output_file]");
+    return CALL_ERROR;
   }
 
   FILE *f = fopen(argv[1], "r");
 
   if (f == NULL) {
     fprintf(stderr, "File %s not found", argv[1]);
-    return 1;
+    return FILE_NOT_FOUND_ERROR;
   }
 
   fseek(f, 0, SEEK_END);
@@ -36,7 +45,7 @@ int main(int argc, char **argv) {
 
   if (scanner->hasError) {
     fprintf(stderr, "Error while scanning. Exiting.");
-    return 1;
+    return SCANNING_ERROR;
   }
 
   Parser *parser = new_parser(scanner->tokens);
@@ -46,7 +55,7 @@ int main(int argc, char **argv) {
 
   if (parser->hasError) {
     fprintf(stderr, "Error while parsing. Exiting.");
-    return 1;
+    return PARSING_ERROR;
   }
 
   Node *cur = parser->program->root;
@@ -58,9 +67,23 @@ int main(int argc, char **argv) {
     cur = cur->next;
   }
 
-  f = fopen("test.s", "w+");
+  char *assembly_file;
+  if (argc < 3) {
+    int filename_size = strlen(argv[1]);
+    assembly_file = malloc(filename_size + 1);
+    strcpy(assembly_file, argv[1]);
+    assembly_file[filename_size - 1] = 's';
+  } else {
+    assembly_file = argv[2];
+  }
+
+  f = fopen(assembly_file, "w+");
   CodeGenerator *code_gen = new_code_generator(parser->program, f);
   fclose(f);
+
+  if (code_gen->hasError) {
+    return CODE_GEN_ERROR;
+  }
 
   return 0;
 }

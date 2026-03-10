@@ -6,6 +6,8 @@
 typedef struct CodeGenerator {
   FILE *f;
   List *program;
+
+  int hasError;
 } CodeGenerator;
 
 CodeGenerator *new_code_generator(List *expressions, FILE *f);
@@ -13,5 +15,7 @@ CodeGenerator *new_code_generator(List *expressions, FILE *f);
 void generate_code(CodeGenerator *code_gen);
 
 void visit_ret(CodeGenerator *code_gen, Expr *expr);
+
+void code_gen_report_error(CodeGenerator *code_gen, char *msg);
 
 #endif // !CO_CODE_GEN_H

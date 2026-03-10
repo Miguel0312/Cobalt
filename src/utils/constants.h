@@ -1,0 +1,6 @@
+#ifndef CO_CONSTANTS_H
+#define CO_CONSTANTS_H
+
+#define MSG_BUFFER_SIZE 256
+
+#endif // !CO_CONSTANTS_H

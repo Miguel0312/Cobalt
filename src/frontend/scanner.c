@@ -1,5 +1,4 @@
 #include "scanner.h"
-#include "frontend/token.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -7,7 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MSG_BUFFER_SIZE 256
+#include "frontend/token.h"
+#include "utils/constants.h"
 
 Scanner *new_scanner(char *src, unsigned long src_len) {
   Scanner *scanner = malloc(sizeof(Scanner));
