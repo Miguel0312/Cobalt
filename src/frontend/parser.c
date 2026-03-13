@@ -152,3 +152,20 @@ Operand *return_expr(Parser *parser) {
 
   return NULL;
 }
+
+Parser *parser_free(Parser *parser) {
+  if (parser == NULL)
+    return NULL;
+
+  Node *cur = parser->program->root;
+  while (cur != NULL) {
+    Expr *expr = cur->data;
+    expr_free(expr);
+    cur = cur->next;
+  }
+  list_free(parser->program);
+
+  free(parser);
+
+  return NULL;
+}

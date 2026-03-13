@@ -32,3 +32,19 @@ void list_append(List *list, void *val) {
     list->root = node;
   list->end = node;
 }
+
+List *list_free(List *list) {
+  if (list == NULL)
+    return NULL;
+
+  Node *cur = list->root;
+  while (cur != NULL) {
+    Node *next = cur->next;
+    free(cur);
+    cur = next;
+  }
+
+  free(list);
+
+  return NULL;
+}

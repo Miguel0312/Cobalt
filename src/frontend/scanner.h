@@ -37,4 +37,6 @@ int read_number(Scanner *scanner, char *error_msg);
 
 TokenType get_keyword(Scanner *scanner);
 
+Scanner *scanner_free(Scanner *scanner);
+
 #endif // !CO_SCANNER_H

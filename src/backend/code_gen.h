@@ -18,4 +18,6 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr);
 
 void code_gen_report_error(CodeGenerator *code_gen, char *msg);
 
+CodeGenerator *code_gen_free(CodeGenerator *code_gen);
+
 #endif // !CO_CODE_GEN_H

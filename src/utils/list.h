@@ -18,4 +18,6 @@ List *new_list(void);
 
 void list_append(List *list, void *val);
 
+List *list_free(List *list);
+
 #endif // !CO_LIST_H

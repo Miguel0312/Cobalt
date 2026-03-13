@@ -3,6 +3,7 @@
 
 #include "frontend/token.h"
 #include "ir/expr.h"
+#include "scanner.h"
 #include <utils/list.h>
 
 typedef struct Parser {
@@ -40,5 +41,7 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...);
 Operand *primary_expr(Parser *parser);
 
 Operand *return_expr(Parser *parser);
+
+Parser *parser_free(Parser *parser);
 
 #endif // !CO_PARSER_H

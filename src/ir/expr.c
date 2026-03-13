@@ -39,3 +39,13 @@ void print_expr(Expr *expr) {
 
   fprintf(stderr, "Print has not been defined for operation %d\n", expr->op);
 }
+
+Expr *expr_free(Expr *expr) {
+  if (expr == NULL)
+    return NULL;
+
+  free(expr->params);
+  free(expr);
+
+  return NULL;
+}

@@ -289,3 +289,22 @@ TokenType get_keyword(Scanner *scanner) {
 
   return IDENTIFIER;
 }
+
+Scanner *scanner_free(Scanner *scanner) {
+  if (scanner == NULL)
+    return NULL;
+
+  free(scanner->src);
+
+  Node *cur = scanner->tokens->root;
+  while (cur != NULL) {
+    Token *token = cur->data;
+    token_free(token);
+    cur = cur->next;
+  }
+  list_free(scanner->tokens);
+
+  free(scanner);
+
+  return NULL;
+}

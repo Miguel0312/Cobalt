@@ -65,3 +65,12 @@ void code_gen_report_error(CodeGenerator *code_gen, char *msg) {
   code_gen->hasError = 1;
   fprintf(stderr, "%s", msg);
 }
+
+CodeGenerator *code_gen_free(CodeGenerator *code_gen) {
+  if (code_gen == NULL)
+    return NULL;
+
+  free(code_gen);
+
+  return NULL;
+}

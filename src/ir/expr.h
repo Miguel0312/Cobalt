@@ -21,4 +21,6 @@ Expr *new_expr_v(Operation op, int n, va_list operands);
 
 void print_expr(Expr *expr);
 
+Expr *expr_free(Expr *expr);
+
 #endif // !CO_EXPR_H
