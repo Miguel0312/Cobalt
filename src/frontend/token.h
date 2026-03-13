@@ -44,4 +44,6 @@ typedef struct {
 
 Token *new_token(TokenType type, char *lexeme, int line);
 
+char *token_type_to_string(TokenType type);
+
 #endif // !TOKEN_H

@@ -78,7 +78,25 @@ List *scan_tokens(Scanner *scanner) {
       break;
     }
     case '/': {
-      scanner_add_token(scanner, SLASH);
+      if (scanner_peek(scanner) == '/') {
+        char comment_char;
+        do {
+          comment_char = get_next_char(scanner);
+        } while (comment_char != '\n' && comment_char != '\0');
+      } else if (scanner_peek(scanner) == '*') {
+        char comment_char = get_next_char(scanner);
+        do {
+          comment_char = get_next_char(scanner);
+        } while (!scanner_is_at_end(scanner) &&
+                 (comment_char != '*' || scanner_peek(scanner) != '/'));
+        if (scanner_is_at_end(scanner)) {
+          scanner_report_error(scanner, "Multi-line comment must be closed");
+        } else {
+          scanner_advance(scanner);
+        }
+      } else {
+        scanner_add_token(scanner, SLASH);
+      }
       break;
     }
     case '*': {
