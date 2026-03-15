@@ -51,6 +51,7 @@ void parse_program(Parser *parser) {
     } else {
       parser_report_error(parser, "Unexpected token");
     }
+    parser_consume_token(parser, SEMICOLON);
   }
 
   parser_consume_token(parser, RIGHT_BRACE);
@@ -162,15 +163,13 @@ Operand *var_decl(Parser *parser) {
 
   Operand *var = basic_block_add_var(parser->bb, OT_ID, token->lexeme);
 
-  if (parser_consume_if(parser, SEMICOLON)) {
+  if (parser_get_cur(parser)->type == SEMICOLON) {
     return var;
   }
 
   parser_consume_token(parser, EQUAL);
 
   Operand *rhs = primary_expr(parser);
-
-  parser_consume_token(parser, SEMICOLON);
 
   parser_add_expr(parser, ASSIGN, 2, var, rhs);
 
@@ -192,13 +191,10 @@ Operand *var_assignment(Parser *parser) {
 
   parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
 
-  parser_consume_token(parser, SEMICOLON);
-
   return lhs;
 }
 
 Operand *primary_expr(Parser *parser) {
-  /* parser_assert_token_type(parser, INT_LITERAL); */
   Token *token = parser_advance(parser);
 
   Operand *operand;
@@ -216,6 +212,16 @@ Operand *primary_expr(Parser *parser) {
     return NULL;
   }
 
+  if (parser_consume_if(parser, EQUAL)) {
+    if (operand->type != OT_ID) {
+      parser_report_error(parser, "Expression is not assignable");
+      return operand;
+    }
+
+    Operand *rhs = primary_expr(parser);
+    parser_add_expr(parser, ASSIGN, 2, operand, rhs);
+  }
+
   return operand;
 }
 
@@ -223,8 +229,6 @@ Operand *return_expr(Parser *parser) {
   parser_consume_token(parser, RETURN);
 
   Operand *ret_val = primary_expr(parser);
-
-  parser_consume_token(parser, SEMICOLON);
 
   parser_add_expr(parser, RET, 1, ret_val);
 

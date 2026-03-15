@@ -1,3 +1,7 @@
 .cache/
 build/
+*.s
+*.out
+TODO.txt
 compile_commands.json
+
