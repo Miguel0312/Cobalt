@@ -20,6 +20,7 @@ Parser *new_parser(List *tokens) {
   parser->cur_token = tokens->root;
   parser->program = new_list();
   parser->hasError = 0;
+  parser->bb = new_basic_block();
 
   parse_program(parser);
 
@@ -29,7 +30,7 @@ Parser *new_parser(List *tokens) {
 void parse_program(Parser *parser) {
   parser_consume_token(parser, INT_TS);
   parser_assert_token_type(parser, IDENTIFIER);
-  Token *main_token = parser_peek(parser);
+  Token *main_token = parser_get_cur(parser);
   if (strcmp(main_token->lexeme, "main") != 0) {
     parser_report_error(parser, "Expected function to be called main");
   }
@@ -38,9 +39,20 @@ void parse_program(Parser *parser) {
   parser_consume_token(parser, RIGHT_PAREN);
   parser_consume_token(parser, LEFT_BRACE);
 
-  return_expr(parser);
+  TokenType cur_type;
+  while (!parser_is_at_end(parser) &&
+         (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
+    if (cur_type == INT_TS) {
+      var_decl(parser);
+    } else if (cur_type == RETURN) {
+      return_expr(parser);
+    } else if (cur_type == IDENTIFIER) {
+      var_assignment(parser);
+    } else {
+      parser_report_error(parser, "Unexpected token");
+    }
+  }
 
-  parser_consume_token(parser, SEMICOLON);
   parser_consume_token(parser, RIGHT_BRACE);
   if (!parser_is_at_end(parser)) {
     parser_report_error(parser, "Expected EOF");
@@ -49,10 +61,10 @@ void parse_program(Parser *parser) {
 
 int parser_is_at_end(Parser *parser) {
   assert(parser != NULL);
-  return parser_peek(parser)->type == EOF_TOKEN;
+  return parser_get_cur(parser)->type == EOF_TOKEN;
 }
 
-Token *parser_peek(Parser *parser) {
+Token *parser_get_cur(Parser *parser) {
   assert(parser != NULL);
   return parser->cur_token->data;
 }
@@ -71,7 +83,7 @@ Token *parser_advance(Parser *parser) {
 
 void parser_report_error(Parser *parser, char *msg) {
   assert(parser != NULL);
-  fprintf(stderr, "[Line %d]: %s\n", parser_peek(parser)->line, msg);
+  fprintf(stderr, "[Line %d]: %s\n", parser_get_cur(parser)->line, msg);
   parser->hasError = 1;
   parser_panic(parser);
 }
@@ -89,10 +101,13 @@ void parser_panic(Parser *parser) {
 
 int parser_assert_token_type(Parser *parser, TokenType type) {
   assert(parser != NULL);
-  if (parser_peek(parser)->type == type) {
+  if (parser_get_cur(parser)->type == type) {
     return 1;
   }
-  printf("Expected: %d, Got: %d\n", type, parser_peek(parser)->type);
+  // TODO: pass this message to the report_error function instead of printing
+  // directly
+  // TODO: translate token indices into something readable
+  printf("Expected: %d, Got: %d\n", type, parser_get_cur(parser)->type);
   parser_report_error(parser, "Unexpected token type");
 
   return 0;
@@ -110,7 +125,7 @@ int parser_consume_token(Parser *parser, TokenType type) {
 
 int parser_consume_if(Parser *parser, TokenType type) {
   assert(parser != NULL);
-  if (parser_peek(parser)->type == type) {
+  if (parser_get_cur(parser)->type == type) {
     parser_advance(parser);
     return 1;
   }
@@ -120,7 +135,7 @@ int parser_consume_if(Parser *parser, TokenType type) {
 
 int parser_consume_if_not(Parser *parser, TokenType type) {
   assert(parser != NULL);
-  if (parser_peek(parser)->type != type) {
+  if (parser_get_cur(parser)->type != type) {
     parser_advance(parser);
     return 1;
   }
@@ -135,18 +150,81 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...) {
   va_end(args);
 }
 
-Operand *primary_expr(Parser *parser) {
-  parser_assert_token_type(parser, INT_LITERAL);
-  Token *token = parser_peek(parser);
-  parser_advance(parser);
+Operand *var_decl(Parser *parser) {
+  parser_consume_token(parser, INT_TS);
+  parser_assert_token_type(parser, IDENTIFIER);
+  Token *token = parser_advance(parser);
+  if (basic_block_get(parser->bb, token->lexeme) != NULL) {
+    // TODO: print the var name here
+    parser_report_error(parser, "Variable has already been declared");
+    return NULL;
+  }
 
-  return new_operand(atoi(token->lexeme));
+  Operand *var = basic_block_add_var(parser->bb, OT_ID, token->lexeme);
+
+  if (parser_consume_if(parser, SEMICOLON)) {
+    return var;
+  }
+
+  parser_consume_token(parser, EQUAL);
+
+  Operand *rhs = primary_expr(parser);
+
+  parser_consume_token(parser, SEMICOLON);
+
+  parser_add_expr(parser, ASSIGN, 2, var, rhs);
+
+  return var;
+}
+
+Operand *var_assignment(Parser *parser) {
+  parser_assert_token_type(parser, IDENTIFIER);
+  Token *token = parser_advance(parser);
+  Operand *lhs = basic_block_get(parser->bb, token->lexeme);
+  if (lhs == NULL) {
+    // TODO: print the var name here
+    parser_report_error(parser, "Variable has not been declared");
+  }
+
+  parser_consume_token(parser, EQUAL);
+
+  Operand *rhs = primary_expr(parser);
+
+  parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+
+  parser_consume_token(parser, SEMICOLON);
+
+  return lhs;
+}
+
+Operand *primary_expr(Parser *parser) {
+  /* parser_assert_token_type(parser, INT_LITERAL); */
+  Token *token = parser_advance(parser);
+
+  Operand *operand;
+  if (token->type == INT_LITERAL) {
+    OperandVal val = {.int_val = atoi(token->lexeme)};
+    operand = new_operand(val, OT_INT, NULL);
+  } else if (token->type == IDENTIFIER) {
+    operand = basic_block_get(parser->bb, token->lexeme);
+    if (operand == NULL) {
+      // TODO: print the name of the variable
+      parser_report_error(parser, "Variable has not been declared");
+    }
+  } else {
+    parser_report_error(parser, "Unexpected token while parsing primary_expr");
+    return NULL;
+  }
+
+  return operand;
 }
 
 Operand *return_expr(Parser *parser) {
   parser_consume_token(parser, RETURN);
 
   Operand *ret_val = primary_expr(parser);
+
+  parser_consume_token(parser, SEMICOLON);
 
   parser_add_expr(parser, RET, 1, ret_val);
 

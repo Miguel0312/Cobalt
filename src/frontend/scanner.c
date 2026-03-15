@@ -234,7 +234,7 @@ void scanner_report_error(Scanner *scanner, char *msg) {
 int read_identifier(Scanner *scanner, char *error_msg) {
   assert(scanner != NULL);
   assert(error_msg != NULL);
-  while (isalnum(scanner_peek(scanner))) {
+  while (isalnum(scanner_peek(scanner)) || scanner_peek(scanner) == '_') {
     scanner_advance(scanner);
   }
 
