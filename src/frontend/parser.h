@@ -25,6 +25,8 @@ Token *parser_advance(Parser *parser);
 
 Token *parser_get_cur(Parser *parser);
 
+Token *parser_peek(Parser *parser);
+
 void parser_report_error(Parser *parser, char *msg);
 
 void parser_panic(Parser *parser);
@@ -41,11 +43,17 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...);
 
 Operand *var_decl(Parser *parser);
 
+Operand *return_stmt(Parser *parser);
+
+Operand *expr(Parser *parser);
+
 Operand *var_assignment(Parser *parser);
 
-Operand *primary_expr(Parser *parser);
+Operand *add_sub(Parser *parser);
 
-Operand *return_expr(Parser *parser);
+Operand *mul_div(Parser *parser);
+
+Operand *primary_expr(Parser *parser);
 
 Parser *parser_free(Parser *parser);
 

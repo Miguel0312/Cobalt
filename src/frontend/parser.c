@@ -45,13 +45,13 @@ void parse_program(Parser *parser) {
     if (cur_type == INT_TS) {
       var_decl(parser);
     } else if (cur_type == RETURN) {
-      return_expr(parser);
+      return_stmt(parser);
     } else if (cur_type == IDENTIFIER) {
-      var_assignment(parser);
+      expr(parser);
+      parser_consume_token(parser, SEMICOLON);
     } else {
       parser_report_error(parser, "Unexpected token");
     }
-    parser_consume_token(parser, SEMICOLON);
   }
 
   parser_consume_token(parser, RIGHT_BRACE);
@@ -68,6 +68,12 @@ int parser_is_at_end(Parser *parser) {
 Token *parser_get_cur(Parser *parser) {
   assert(parser != NULL);
   return parser->cur_token->data;
+}
+
+Token *parser_peek(Parser *parser) {
+  if (parser_is_at_end(parser))
+    return parser_get_cur(parser);
+  return parser->cur_token->next->data;
 }
 
 Token *parser_advance(Parser *parser) {
@@ -164,20 +170,31 @@ Operand *var_decl(Parser *parser) {
   Operand *var = basic_block_add_var(parser->bb, OT_ID, token->lexeme);
 
   if (parser_get_cur(parser)->type == SEMICOLON) {
+    parser_consume_token(parser, SEMICOLON);
     return var;
   }
 
   parser_consume_token(parser, EQUAL);
 
-  Operand *rhs = primary_expr(parser);
+  Operand *rhs = expr(parser);
+
+  parser_consume_token(parser, SEMICOLON);
 
   parser_add_expr(parser, ASSIGN, 2, var, rhs);
 
   return var;
 }
 
+Operand *expr(Parser *parser) { return var_assignment(parser); }
+
 Operand *var_assignment(Parser *parser) {
-  parser_assert_token_type(parser, IDENTIFIER);
+  if (parser_peek(parser)->type != EQUAL) {
+    return add_sub(parser);
+  }
+
+  if (parser_get_cur(parser)->type != IDENTIFIER) {
+    parser_report_error(parser, "Expression is not assignable");
+  }
   Token *token = parser_advance(parser);
   Operand *lhs = basic_block_get(parser->bb, token->lexeme);
   if (lhs == NULL) {
@@ -187,9 +204,41 @@ Operand *var_assignment(Parser *parser) {
 
   parser_consume_token(parser, EQUAL);
 
-  Operand *rhs = primary_expr(parser);
+  Operand *rhs = expr(parser);
 
   parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+
+  return lhs;
+}
+
+Operand *add_sub(Parser *parser) {
+  Operand *lhs = mul_div(parser);
+
+  while (parser_get_cur(parser)->type == PLUS ||
+         parser_get_cur(parser)->type == MINUS) {
+    TokenType tt = parser_advance(parser)->type;
+    Operand *rhs = mul_div(parser);
+    Operation op = (tt == PLUS ? ADD : SUB);
+    Operand *res = basic_block_add_tmp(parser->bb);
+    parser_add_expr(parser, op, 3, res, lhs, rhs);
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *mul_div(Parser *parser) {
+  Operand *lhs = primary_expr(parser);
+
+  while (parser_get_cur(parser)->type == STAR ||
+         parser_get_cur(parser)->type == SLASH) {
+    TokenType tt = parser_advance(parser)->type;
+    Operand *rhs = primary_expr(parser);
+    Operation op = (tt == STAR ? MUL : DIV);
+    Operand *res = basic_block_add_tmp(parser->bb);
+    parser_add_expr(parser, op, 3, res, lhs, rhs);
+    lhs = res;
+  }
 
   return lhs;
 }
@@ -225,10 +274,12 @@ Operand *primary_expr(Parser *parser) {
   return operand;
 }
 
-Operand *return_expr(Parser *parser) {
+Operand *return_stmt(Parser *parser) {
   parser_consume_token(parser, RETURN);
 
-  Operand *ret_val = primary_expr(parser);
+  Operand *ret_val = expr(parser);
+
+  parser_consume_token(parser, SEMICOLON);
 
   parser_add_expr(parser, RET, 1, ret_val);
 

@@ -30,6 +30,8 @@ Expr *new_expr_v(Operation op, int n, va_list operands);
 
 void print_expr(Expr *expr);
 
+void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char op_char);
+
 void print_operand(Operand *operand);
 
 Expr *expr_free(Expr *expr);

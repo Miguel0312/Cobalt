@@ -3,7 +3,7 @@
 #include <stdio.h>
 #ifndef CO_CODE_GEN_H
 
-typedef enum { AO_OPERAND, AO_REGISTER } AssemblyOperandType;
+typedef enum { AO_CONST, AO_REGISTER, AO_ADDRESS } AssemblyOperandType;
 
 typedef union {
   Operand *operand;
@@ -26,13 +26,15 @@ CodeGenerator *new_code_generator(List *expressions, FILE *f);
 
 void generate_code(CodeGenerator *code_gen);
 
+void visit_binary_op(CodeGenerator *code_gen, Expr *expr);
+
 void visit_assign(CodeGenerator *code_gen, Expr *expr);
 
 void visit_ret(CodeGenerator *code_gen, Expr *expr);
 
-void mov(CodeGenerator *code_gen, AssemblyOperand op1, AssemblyOperand op2);
+void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dst);
 
-void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand op);
+void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand *op);
 
 void code_gen_report_error(CodeGenerator *code_gen, char *msg);
 
