@@ -256,6 +256,9 @@ Operand *primary_expr(Parser *parser) {
       // TODO: print the name of the variable
       parser_report_error(parser, "Variable has not been declared");
     }
+  } else if (token->type == LEFT_PAREN) {
+    operand = expr(parser);
+    parser_consume_token(parser, RIGHT_PAREN);
   } else {
     parser_report_error(parser, "Unexpected token while parsing primary_expr");
     return NULL;
