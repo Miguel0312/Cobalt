@@ -1,11 +1,15 @@
-#include "parser.h"
-#include "frontend/token.h"
-#include "ir/expr.h"
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "frontend/token.h"
+#include "ir/basic_block.h"
+#include "ir/cfg.h"
+#include "ir/expr.h"
+#include "parser.h"
+#include "utils/hash_map.h"
 
 #define MSG_BUFFER_SIZE 256
 
@@ -22,7 +26,7 @@ Parser *new_parser(List *tokens) {
   parser->cur_token = tokens->root;
   parser->program = new_list();
   parser->hasError = 0;
-  parser->bb = new_basic_block();
+  parser->cfg = new_cfg();
 
   parse_program(parser);
 
@@ -39,24 +43,9 @@ void parse_program(Parser *parser) {
   parser_advance(parser);
   parser_consume_token(parser, LEFT_PAREN);
   parser_consume_token(parser, RIGHT_PAREN);
-  parser_consume_token(parser, LEFT_BRACE);
 
-  TokenType cur_type;
-  while (!parser_is_at_end(parser) &&
-         (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
-    if (cur_type == INT_TS) {
-      var_decl(parser);
-    } else if (cur_type == RETURN) {
-      return_stmt(parser);
-    } else if (cur_type == IDENTIFIER) {
-      expr(parser);
-      parser_consume_token(parser, SEMICOLON);
-    } else {
-      parser_report_error(parser, "Unexpected token");
-    }
-  }
+  block(parser);
 
-  parser_consume_token(parser, RIGHT_BRACE);
   if (!parser_is_at_end(parser)) {
     parser_report_error(parser, "Expected EOF");
   }
@@ -115,8 +104,7 @@ int parser_assert_token_type(Parser *parser, TokenType type) {
   }
 
   char msg[MSG_BUFFER_SIZE];
-  snprintf(msg, MSG_BUFFER_SIZE,
-           "Unexpected token type. Expected: %s, Got: %s\n",
+  snprintf(msg, MSG_BUFFER_SIZE, "Unexpected token type. Expected: %s, Got: %s",
            token_type_to_string(type),
            token_type_to_string(parser_get_cur(parser)->type));
   parser_report_error(parser, msg);
@@ -160,12 +148,44 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...) {
   list_append(parser->program, new_expr_v(op, n, args));
   va_end(args);
 }
+void block(Parser *parser) {
+  parser_consume_token(parser, LEFT_BRACE);
 
+  cfg_create_bb(parser->cfg);
+
+  TokenType cur_type;
+  while (!parser_is_at_end(parser) &&
+         (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
+    switch (cur_type) {
+    case INT_TS:
+      var_decl(parser);
+      break;
+    case RETURN:
+      return_stmt(parser);
+      break;
+    case IDENTIFIER:
+      expr(parser);
+      parser_consume_token(parser, SEMICOLON);
+      break;
+    case LEFT_BRACE:
+      block(parser);
+      break;
+    default:
+      parser_report_error(parser, "Unexpected token");
+    }
+  }
+
+  assert(!is_stack_empty(parser->cfg->bb_stack));
+  stack_pop(parser->cfg->bb_stack);
+
+  parser_consume_token(parser, RIGHT_BRACE);
+}
 Operand *var_decl(Parser *parser) {
   parser_consume_token(parser, INT_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   Token *token = parser_advance(parser);
-  if (basic_block_get(parser->bb, token->lexeme) != NULL) {
+  if (hash_map_get(cfg_get_cur_bb(parser->cfg)->operands, token->lexeme) !=
+      NULL) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
              "Variable %s has already been declared in this scope",
@@ -174,7 +194,7 @@ Operand *var_decl(Parser *parser) {
     return NULL;
   }
 
-  Operand *var = basic_block_add_var(parser->bb, OT_ID, token->lexeme);
+  Operand *var = cfg_add_var(parser->cfg, OT_ID, token->lexeme);
 
   if (parser_get_cur(parser)->type == SEMICOLON) {
     parser_consume_token(parser, SEMICOLON);
@@ -203,7 +223,7 @@ Operand *var_assignment(Parser *parser) {
     parser_report_error(parser, "Expression is not assignable");
   }
   Token *token = parser_advance(parser);
-  Operand *lhs = basic_block_get(parser->bb, token->lexeme);
+  Operand *lhs = cfg_get_var(parser->cfg, token->lexeme);
   if (lhs == NULL) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
@@ -228,7 +248,7 @@ Operand *add_sub(Parser *parser) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = mul_div(parser);
     Operation op = (tt == PLUS ? ADD : SUB);
-    Operand *res = basic_block_add_tmp(parser->bb);
+    Operand *res = cfg_add_tmp(parser->cfg);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -259,7 +279,7 @@ Operand *mul_div(Parser *parser) {
       parser_report_error(parser, "Unexpected token in mul_div");
       return NULL;
     }
-    Operand *res = basic_block_add_tmp(parser->bb);
+    Operand *res = cfg_add_tmp(parser->cfg);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -275,7 +295,7 @@ Operand *primary_expr(Parser *parser) {
     OperandVal val = {.int_val = atoi(token->lexeme)};
     operand = new_operand(val, OT_INT, NULL);
   } else if (token->type == IDENTIFIER) {
-    operand = basic_block_get(parser->bb, token->lexeme);
+    operand = basic_block_get(cfg_get_cur_bb(parser->cfg), token->lexeme);
     if (operand == NULL) {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE,

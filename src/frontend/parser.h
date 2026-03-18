@@ -2,7 +2,7 @@
 #define CO_PARSER_H
 
 #include "frontend/token.h"
-#include "ir/basic_block.h"
+#include "ir/cfg.h"
 #include "ir/expr.h"
 #include <utils/list.h>
 
@@ -10,7 +10,7 @@ typedef struct Parser {
   List *tokens;
   List *program;
   Node *cur_token;
-  BasicBlock *bb;
+  CFG *cfg;
 
   int hasError;
 } Parser;
@@ -40,6 +40,8 @@ int parser_consume_if(Parser *parser, TokenType type);
 int parser_consume_if_not(Parser *parser, TokenType type);
 
 void parser_add_expr(Parser *parser, Operation op, int n, ...);
+
+void block(Parser *parser);
 
 Operand *var_decl(Parser *parser);
 

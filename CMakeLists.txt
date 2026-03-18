@@ -19,12 +19,16 @@ set(SOURCE_FILES src/main.c
   src/frontend/token.h
   src/ir/basic_block.h
   src/ir/basic_block.c
+  src/ir/cfg.h
+  src/ir/cfg.c
   src/ir/expr.h
   src/ir/expr.c
   src/utils/hash_map.c
   src/utils/hash_map.h
   src/utils/list.h
-  src/utils/list.c)
+  src/utils/list.c
+  src/utils/stack.h
+  src/utils/stack.c)
 
 add_executable(cobalt ${SOURCE_FILES})
 target_include_directories(cobalt PRIVATE src)
