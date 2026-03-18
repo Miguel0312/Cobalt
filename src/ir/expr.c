@@ -54,7 +54,8 @@ void print_expr(Expr *expr) {
   case ADD:
   case SUB:
   case MUL:
-  case DIV: {
+  case DIV:
+  case MOD: {
     char op_char = '?';
     switch (expr->op) {
     case ADD: {
@@ -71,6 +72,10 @@ void print_expr(Expr *expr) {
     }
     case DIV: {
       op_char = '/';
+      break;
+    }
+    case MOD: {
+      op_char = '%';
       break;
     }
     default: {

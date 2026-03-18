@@ -46,6 +46,11 @@ void generate_code(CodeGenerator *code_gen) {
       visit_binary_op(code_gen, expr);
       break;
     }
+    case DIV:
+    case MOD: {
+      visit_div(code_gen, expr);
+      break;
+    }
     default: {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE, "Operation %d not implemented\n",
@@ -81,8 +86,6 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   Operand *dest = expr->params[0], *lhs = expr->params[1],
           *rhs = expr->params[2];
 
-  // TODO: check three-operand form of the assembly instructions
-
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
   lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
@@ -106,6 +109,43 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   fprintf(code_gen->f, "\n");
 
   mov(code_gen, &scratch, &dest_op);
+}
+
+void visit_div(CodeGenerator *code_gen, Expr *expr) {
+  AssemblyOperand rax;
+  rax.type = AO_REGISTER, rax.val.reg = "%eax";
+  AssemblyOperand rdx;
+  rdx.type = AO_REGISTER, rdx.val.reg = "%edx";
+
+  Operand *dest = expr->params[0], *lhs = expr->params[1],
+          *rhs = expr->params[2];
+
+  AssemblyOperand dest_op, lhs_op, rhs_op;
+  dest_op.type = AO_ADDRESS;
+  lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  dest_op.val.operand = dest, lhs_op.val.operand = lhs,
+  rhs_op.val.operand = rhs;
+
+  mov(code_gen, &lhs_op, &rax);
+  fprintf(code_gen->f, "cdq\n");
+
+  if (rhs_op.type == AO_CONST) {
+    AssemblyOperand rcx;
+    rcx.type = AO_REGISTER, rcx.val.reg = "%ecx";
+    mov(code_gen, &rhs_op, &rcx);
+    rhs_op = rcx;
+  }
+
+  fprintf(code_gen->f, "div ");
+  print_assembly_operand(code_gen, &rhs_op);
+  fprintf(code_gen->f, "\n");
+
+  if (expr->op == DIV) {
+    mov(code_gen, &rax, &dest_op);
+  } else if (expr->op == MOD) {
+    mov(code_gen, &rdx, &dest_op);
+  }
 }
 
 void visit_assign(CodeGenerator *code_gen, Expr *expr) {

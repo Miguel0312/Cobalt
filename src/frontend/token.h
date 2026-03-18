@@ -15,6 +15,7 @@ typedef enum TokenType {
   SEMICOLON,
   SLASH,
   STAR,
+  PERCENT,
   BANG,
   BANG_EQUAL,
   EQUAL,

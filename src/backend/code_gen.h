@@ -28,6 +28,8 @@ void generate_code(CodeGenerator *code_gen);
 
 void visit_binary_op(CodeGenerator *code_gen, Expr *expr);
 
+void visit_div(CodeGenerator *code_gen, Expr *expr);
+
 void visit_assign(CodeGenerator *code_gen, Expr *expr);
 
 void visit_ret(CodeGenerator *code_gen, Expr *expr);

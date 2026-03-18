@@ -2,7 +2,7 @@
 #define CO_EXPR_H
 
 #include <stdio.h>
-typedef enum Operation { ADD, SUB, DIV, MUL, ASSIGN, RET } Operation;
+typedef enum Operation { ADD, SUB, DIV, MUL, ASSIGN, MOD, RET } Operation;
 
 typedef union OperandVal {
   int int_val;

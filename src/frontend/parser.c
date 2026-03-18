@@ -231,10 +231,25 @@ Operand *mul_div(Parser *parser) {
   Operand *lhs = primary_expr(parser);
 
   while (parser_get_cur(parser)->type == STAR ||
-         parser_get_cur(parser)->type == SLASH) {
+         parser_get_cur(parser)->type == SLASH ||
+         parser_get_cur(parser)->type == PERCENT) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = primary_expr(parser);
-    Operation op = (tt == STAR ? MUL : DIV);
+    Operation op;
+    switch (tt) {
+    case STAR:
+      op = MUL;
+      break;
+    case SLASH:
+      op = DIV;
+      break;
+    case PERCENT:
+      op = MOD;
+      break;
+    default:
+      parser_report_error(parser, "Unexpected token in mul_div");
+      return NULL;
+    }
     Operand *res = basic_block_add_tmp(parser->bb);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;

@@ -32,7 +32,6 @@ Operand *basic_block_add_tmp(BasicBlock *bb) {
   char *name = malloc(10);
 
   snprintf(name, 10, "!%lu", bb->offset);
-  printf("%s\n", name);
 
   Operand *operand = new_operand(val, OT_ID, name);
 

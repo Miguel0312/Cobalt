@@ -77,6 +77,10 @@ List *scan_tokens(Scanner *scanner) {
       scanner_add_token(scanner, SEMICOLON);
       break;
     }
+    case '%': {
+      scanner_add_token(scanner, PERCENT);
+      break;
+    }
     case '/': {
       if (scanner_peek(scanner) == '/') {
         char comment_char;
