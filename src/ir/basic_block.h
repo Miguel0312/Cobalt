@@ -5,6 +5,7 @@
 
 typedef struct BasicBlock {
   HashMap *operands;
+  unsigned long stack_space;
 } BasicBlock;
 
 BasicBlock *new_basic_block(void);

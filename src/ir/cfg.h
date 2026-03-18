@@ -14,7 +14,9 @@ typedef struct CFG {
 
 CFG *new_cfg(void);
 
-void cfg_create_bb(CFG *cfg);
+void cfg_push_bb(CFG *cfg);
+
+void cfg_pop_bb(CFG *cfg);
 
 Operand *cfg_get_var(CFG *cfg, char *name);
 

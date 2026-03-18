@@ -15,11 +15,16 @@ CFG *new_cfg(void) {
   return cfg;
 }
 
-void cfg_create_bb(CFG *cfg) {
+void cfg_push_bb(CFG *cfg) {
   BasicBlock *bb = new_basic_block();
 
   list_append(cfg->bbs, bb);
   stack_push(cfg->bb_stack, bb);
+}
+
+void cfg_pop_bb(CFG *cfg) {
+  cfg->offset -= cfg_get_cur_bb(cfg)->stack_space;
+  stack_pop(cfg->bb_stack);
 }
 
 Operand *cfg_get_var(CFG *cfg, char *name) {
@@ -39,6 +44,7 @@ Operand *cfg_get_var(CFG *cfg, char *name) {
 Operand *cfg_add_var(CFG *cfg, OperandType type, char *name) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
   cfg->offset += 4;
+  bb->stack_space += 4;
 
   unsigned long address = cfg->offset;
   OperandVal val = {.address = address};
@@ -50,7 +56,9 @@ Operand *cfg_add_var(CFG *cfg, OperandType type, char *name) {
 }
 
 Operand *cfg_add_tmp(CFG *cfg) {
+  BasicBlock *bb = cfg_get_cur_bb(cfg);
   cfg->offset += 4;
+  bb->stack_space += 4;
 
   unsigned long address = cfg->offset;
   OperandVal val = {.address = address};

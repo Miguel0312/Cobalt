@@ -49,6 +49,8 @@ void parse_program(Parser *parser) {
   if (!parser_is_at_end(parser)) {
     parser_report_error(parser, "Expected EOF");
   }
+  // Make sure that all basic blocks' stack memory is freed
+  assert(parser->cfg->offset == 0);
 }
 
 int parser_is_at_end(Parser *parser) {
@@ -151,7 +153,7 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...) {
 void block(Parser *parser) {
   parser_consume_token(parser, LEFT_BRACE);
 
-  cfg_create_bb(parser->cfg);
+  cfg_push_bb(parser->cfg);
 
   TokenType cur_type;
   while (!parser_is_at_end(parser) &&
@@ -176,7 +178,7 @@ void block(Parser *parser) {
   }
 
   assert(!is_stack_empty(parser->cfg->bb_stack));
-  stack_pop(parser->cfg->bb_stack);
+  cfg_pop_bb(parser->cfg);
 
   parser_consume_token(parser, RIGHT_BRACE);
 }

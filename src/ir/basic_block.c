@@ -5,6 +5,7 @@ BasicBlock *new_basic_block(void) {
   BasicBlock *bb = malloc(sizeof(BasicBlock));
 
   bb->operands = new_hash_map(string_hash, string_cmp);
+  bb->stack_space = 0;
 
   return bb;
 }
