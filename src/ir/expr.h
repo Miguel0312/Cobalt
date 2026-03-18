@@ -34,6 +34,8 @@ void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char op_char);
 
 void print_operand(Operand *operand);
 
+char *operation_to_string(Operation op);
+
 Expr *expr_free(Expr *expr);
 
 #endif // !CO_EXPR_H

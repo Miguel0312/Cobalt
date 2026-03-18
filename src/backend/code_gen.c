@@ -53,8 +53,8 @@ void generate_code(CodeGenerator *code_gen) {
     }
     default: {
       char msg[MSG_BUFFER_SIZE];
-      snprintf(msg, MSG_BUFFER_SIZE, "Operation %d not implemented\n",
-               expr->op);
+      snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
+               operation_to_string(expr->op));
       code_gen_report_error(code_gen, msg);
     }
     }
@@ -79,7 +79,10 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
     break;
   }
   default: {
-    code_gen_report_error(code_gen, "Given operation is not binary");
+    char msg[MSG_BUFFER_SIZE];
+    snprintf(msg, MSG_BUFFER_SIZE, "Given operation %s is not binary",
+             operation_to_string(expr->op));
+    code_gen_report_error(code_gen, msg);
   }
   }
 

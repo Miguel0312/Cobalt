@@ -85,9 +85,7 @@ for file in c_files:
         capture_output=True,
     )
 
-    compilation_should_fail = False
-    if gcc_compilation_res.returncode != 0:
-        compilation_should_fail = True
+    compilation_should_fail = gcc_compilation_res.returncode != 0
 
     assembly_file = file.with_suffix(".s")
     res = subprocess.run(
@@ -114,8 +112,9 @@ for file in c_files:
             print(f"{res.stderr.decode()}")
         passing = False
     elif compilation_should_fail and res.returncode == 0:
+        print(compilation_should_fail)
         print(
-            f"{bcolors.FAIL}Cobalt should have flagged errros with {file}{bcolors.ENDC}"
+            f"{bcolors.FAIL}Cobalt should have detected errors with {file}{bcolors.ENDC}"
         )
 
     if not compilation_should_fail and passing:

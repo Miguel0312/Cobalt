@@ -51,6 +51,8 @@ char *token_type_to_string(TokenType type) {
     return "/";
   case STAR:
     return "*";
+  case PERCENT:
+    return "%";
   case BANG:
     return "!";
   case BANG_EQUAL:

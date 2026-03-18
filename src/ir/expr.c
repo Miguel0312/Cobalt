@@ -106,6 +106,25 @@ void print_operand(Operand *operand) {
     printf("%s", operand->name);
 }
 
+char *operation_to_string(Operation op) {
+  switch (op) {
+  case ADD:
+    return "ADD";
+  case SUB:
+    return "SUB";
+  case DIV:
+    return "DIV";
+  case MUL:
+    return "MUL";
+  case ASSIGN:
+    return "ASSIGN";
+  case MOD:
+    return "MOD";
+  case RET:
+    return "RET";
+  }
+}
+
 Expr *expr_free(Expr *expr) {
   if (expr == NULL)
     return NULL;

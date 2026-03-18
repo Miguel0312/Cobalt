@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MSG_BUFFER_SIZE 256
+
 Parser *new_parser(List *tokens) {
   assert(tokens != NULL);
 
@@ -111,11 +113,13 @@ int parser_assert_token_type(Parser *parser, TokenType type) {
   if (parser_get_cur(parser)->type == type) {
     return 1;
   }
-  // TODO: pass this message to the report_error function instead of printing
-  // directly
-  // TODO: translate token indices into something readable
-  printf("Expected: %d, Got: %d\n", type, parser_get_cur(parser)->type);
-  parser_report_error(parser, "Unexpected token type");
+
+  char msg[MSG_BUFFER_SIZE];
+  snprintf(msg, MSG_BUFFER_SIZE,
+           "Unexpected token type. Expected: %s, Got: %s\n",
+           token_type_to_string(type),
+           token_type_to_string(parser_get_cur(parser)->type));
+  parser_report_error(parser, msg);
 
   return 0;
 }
@@ -162,8 +166,11 @@ Operand *var_decl(Parser *parser) {
   parser_assert_token_type(parser, IDENTIFIER);
   Token *token = parser_advance(parser);
   if (basic_block_get(parser->bb, token->lexeme) != NULL) {
-    // TODO: print the var name here
-    parser_report_error(parser, "Variable has already been declared");
+    char msg[MSG_BUFFER_SIZE];
+    snprintf(msg, MSG_BUFFER_SIZE,
+             "Variable %s has already been declared in this scope",
+             token->lexeme);
+    parser_report_error(parser, msg);
     return NULL;
   }
 
@@ -198,8 +205,10 @@ Operand *var_assignment(Parser *parser) {
   Token *token = parser_advance(parser);
   Operand *lhs = basic_block_get(parser->bb, token->lexeme);
   if (lhs == NULL) {
-    // TODO: print the var name here
-    parser_report_error(parser, "Variable has not been declared");
+    char msg[MSG_BUFFER_SIZE];
+    snprintf(msg, MSG_BUFFER_SIZE,
+             "Variable %s has not been declared in this scope", token->lexeme);
+    parser_report_error(parser, msg);
   }
 
   parser_consume_token(parser, EQUAL);
@@ -268,8 +277,11 @@ Operand *primary_expr(Parser *parser) {
   } else if (token->type == IDENTIFIER) {
     operand = basic_block_get(parser->bb, token->lexeme);
     if (operand == NULL) {
-      // TODO: print the name of the variable
-      parser_report_error(parser, "Variable has not been declared");
+      char msg[MSG_BUFFER_SIZE];
+      snprintf(msg, MSG_BUFFER_SIZE,
+               "Variable %s has not been declared in this scope",
+               token->lexeme);
+      parser_report_error(parser, msg);
     }
   } else if (token->type == LEFT_PAREN) {
     operand = expr(parser);
