@@ -143,6 +143,28 @@ List *scan_tokens(Scanner *scanner) {
       }
       break;
     }
+    case '&': {
+      if (scanner_peek(scanner) == '&') {
+        scanner_advance(scanner);
+        scanner_add_token(scanner, L_AND_TOKEN);
+      } else {
+        scanner_add_token(scanner, B_AND_TOKEN);
+      }
+      break;
+    }
+    case '|': {
+      if (scanner_peek(scanner) == '|') {
+        scanner_advance(scanner);
+        scanner_add_token(scanner, L_OR_TOKEN);
+      } else {
+        scanner_add_token(scanner, B_OR_TOKEN);
+      }
+      break;
+    }
+    case '^': {
+      scanner_add_token(scanner, B_XOR_TOKEN);
+      break;
+    }
     case ' ':
     case '\t':
     case '\r': {

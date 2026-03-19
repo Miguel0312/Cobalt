@@ -51,6 +51,12 @@ Operand *expr(Parser *parser);
 
 Operand *var_assignment(Parser *parser);
 
+Operand *bitwise_or(Parser *parser);
+
+Operand *bitwise_xor(Parser *parser);
+
+Operand *bitwise_and(Parser *parser);
+
 Operand *add_sub(Parser *parser);
 
 Operand *mul_div(Parser *parser);

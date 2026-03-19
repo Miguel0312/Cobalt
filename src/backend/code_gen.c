@@ -42,7 +42,10 @@ void generate_code(CodeGenerator *code_gen) {
     }
     case ADD:
     case SUB:
-    case MUL: {
+    case MUL:
+    case B_OR:
+    case B_AND:
+    case B_XOR: {
       visit_binary_op(code_gen, expr);
       break;
     }
@@ -76,6 +79,18 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   }
   case MUL: {
     instr = "imul";
+    break;
+  }
+  case B_AND: {
+    instr = "and";
+    break;
+  }
+  case B_OR: {
+    instr = "or";
+    break;
+  }
+  case B_XOR: {
+    instr = "xor";
     break;
   }
   default: {

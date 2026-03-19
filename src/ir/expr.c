@@ -55,7 +55,10 @@ void print_expr(Expr *expr) {
   case SUB:
   case MUL:
   case DIV:
-  case MOD: {
+  case MOD:
+  case B_OR:
+  case B_AND:
+  case B_XOR: {
     char op_char = '?';
     switch (expr->op) {
     case ADD: {
@@ -78,6 +81,16 @@ void print_expr(Expr *expr) {
       op_char = '%';
       break;
     }
+    case B_OR: {
+      op_char = '|';
+    }
+    case B_AND: {
+      op_char = '&';
+    }
+    case B_XOR: {
+      op_char = '^';
+    }
+
     default: {
     }
     }
@@ -116,6 +129,12 @@ char *operation_to_string(Operation op) {
     return "DIV";
   case MUL:
     return "MUL";
+  case B_OR:
+    return "B_OR";
+  case B_XOR:
+    return "B_XOR";
+  case B_AND:
+    return "B_AND";
   case ASSIGN:
     return "ASSIGN";
   case MOD:

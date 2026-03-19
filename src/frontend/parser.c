@@ -49,7 +49,7 @@ void parse_program(Parser *parser) {
   if (!parser_is_at_end(parser)) {
     parser_report_error(parser, "Expected EOF");
   }
-  // Make sure that all basic blocks' stack memory is freed
+  // Make sure that all basic blocks stack memory is freed
   assert(parser->cfg->offset == 0);
 }
 
@@ -218,7 +218,7 @@ Operand *expr(Parser *parser) { return var_assignment(parser); }
 
 Operand *var_assignment(Parser *parser) {
   if (parser_peek(parser)->type != EQUAL) {
-    return add_sub(parser);
+    return bitwise_or(parser);
   }
 
   if (parser_get_cur(parser)->type != IDENTIFIER) {
@@ -238,6 +238,48 @@ Operand *var_assignment(Parser *parser) {
   Operand *rhs = expr(parser);
 
   parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+
+  return lhs;
+}
+
+Operand *bitwise_or(Parser *parser) {
+  Operand *lhs = bitwise_xor(parser);
+
+  while (parser_get_cur(parser)->type == B_OR_TOKEN) {
+    parser_advance(parser);
+    Operand *rhs = bitwise_xor(parser);
+    Operand *res = cfg_add_tmp(parser->cfg);
+    parser_add_expr(parser, B_OR, 3, res, lhs, rhs);
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *bitwise_xor(Parser *parser) {
+  Operand *lhs = bitwise_and(parser);
+
+  while (parser_get_cur(parser)->type == B_XOR_TOKEN) {
+    parser_advance(parser);
+    Operand *rhs = bitwise_and(parser);
+    Operand *res = cfg_add_tmp(parser->cfg);
+    parser_add_expr(parser, B_XOR, 3, res, lhs, rhs);
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *bitwise_and(Parser *parser) {
+  Operand *lhs = add_sub(parser);
+
+  while (parser_get_cur(parser)->type == B_AND_TOKEN) {
+    parser_advance(parser);
+    Operand *rhs = add_sub(parser);
+    Operand *res = cfg_add_tmp(parser->cfg);
+    parser_add_expr(parser, B_AND, 3, res, lhs, rhs);
+    lhs = res;
+  }
 
   return lhs;
 }

@@ -65,6 +65,16 @@ char *token_type_to_string(TokenType type) {
     return ">";
   case GREATER_EQUAL:
     return ">=";
+  case B_OR_TOKEN:
+    return "|";
+  case B_XOR_TOKEN:
+    return "^";
+  case B_AND_TOKEN:
+    return "&";
+  case L_OR_TOKEN:
+    return "||";
+  case L_AND_TOKEN:
+    return "&&";
   case LESS:
     return "<";
   case LESS_EQUAL:
