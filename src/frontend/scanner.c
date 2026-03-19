@@ -129,6 +129,9 @@ List *scan_tokens(Scanner *scanner) {
       if (scanner_peek(scanner) == '=') {
         scanner_advance(scanner);
         scanner_add_token(scanner, GREATER_EQUAL);
+      } else if (scanner_peek(scanner) == '>') {
+        scanner_advance(scanner);
+        scanner_add_token(scanner, RIGHT_SHIFT_TOKEN);
       } else {
         scanner_add_token(scanner, GREATER);
       }
@@ -138,6 +141,9 @@ List *scan_tokens(Scanner *scanner) {
       if (scanner_peek(scanner) == '=') {
         scanner_advance(scanner);
         scanner_add_token(scanner, LESS_EQUAL);
+      } else if (scanner_peek(scanner) == '<') {
+        scanner_advance(scanner);
+        scanner_add_token(scanner, LEFT_SHIFT_TOKEN);
       } else {
         scanner_add_token(scanner, LESS);
       }

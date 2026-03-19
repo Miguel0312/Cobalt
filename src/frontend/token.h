@@ -27,6 +27,8 @@ typedef enum TokenType {
   B_AND_TOKEN,
   L_OR_TOKEN,
   L_AND_TOKEN,
+  LEFT_SHIFT_TOKEN,
+  RIGHT_SHIFT_TOKEN,
   LESS,
   LESS_EQUAL,
   IDENTIFIER,

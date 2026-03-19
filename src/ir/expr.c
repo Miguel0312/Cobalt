@@ -58,44 +58,55 @@ void print_expr(Expr *expr) {
   case MOD:
   case B_OR:
   case B_AND:
-  case B_XOR: {
-    char op_char = '?';
+  case B_XOR:
+  case LEFT_SHIFT:
+  case RIGHT_SHIFT: {
+    char *op_str = "?";
     switch (expr->op) {
     case ADD: {
-      op_char = '+';
+      op_str = "+";
       break;
     }
     case SUB: {
-      op_char = '-';
+      op_str = "-";
       break;
     }
     case MUL: {
-      op_char = '*';
+      op_str = "*";
       break;
     }
     case DIV: {
-      op_char = '/';
+      op_str = "/";
       break;
     }
     case MOD: {
-      op_char = '%';
+      op_str = "%";
       break;
     }
     case B_OR: {
-      op_char = '|';
+      op_str = "|";
+      break;
     }
     case B_AND: {
-      op_char = '&';
+      op_str = "&";
+      break;
     }
     case B_XOR: {
-      op_char = '^';
+      op_str = "^";
+      break;
     }
-
+    case LEFT_SHIFT: {
+      op_str = "<<";
+      break;
+    }
+    case RIGHT_SHIFT: {
+      op_str = ">>";
+    }
     default: {
     }
     }
     print_binary_expr(expr->params[0], expr->params[1], expr->params[2],
-                      op_char);
+                      op_str);
     return;
   }
   }
@@ -103,11 +114,11 @@ void print_expr(Expr *expr) {
   fprintf(stderr, "Print has not been defined for operation %d\n", expr->op);
 }
 
-void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char op_char) {
+void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char *op_str) {
   print_operand(op1);
   printf(" = ");
   print_operand(op2);
-  printf(" %c ", op_char);
+  printf(" %s ", op_str);
   print_operand(op3);
   printf("\n");
 }
@@ -139,9 +150,15 @@ char *operation_to_string(Operation op) {
     return "ASSIGN";
   case MOD:
     return "MOD";
+  case LEFT_SHIFT:
+    return "LEFT_SHIFT";
+  case RIGHT_SHIFT:
+    return "RIGHT_SHIFT";
   case RET:
     return "RET";
   }
+
+  return "ERROR";
 }
 
 Expr *expr_free(Expr *expr) {

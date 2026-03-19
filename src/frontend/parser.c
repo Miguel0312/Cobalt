@@ -271,13 +271,29 @@ Operand *bitwise_xor(Parser *parser) {
 }
 
 Operand *bitwise_and(Parser *parser) {
-  Operand *lhs = add_sub(parser);
+  Operand *lhs = shift(parser);
 
   while (parser_get_cur(parser)->type == B_AND_TOKEN) {
     parser_advance(parser);
-    Operand *rhs = add_sub(parser);
+    Operand *rhs = shift(parser);
     Operand *res = cfg_add_tmp(parser->cfg);
     parser_add_expr(parser, B_AND, 3, res, lhs, rhs);
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *shift(Parser *parser) {
+  Operand *lhs = add_sub(parser);
+
+  while (parser_get_cur(parser)->type == LEFT_SHIFT_TOKEN ||
+         parser_get_cur(parser)->type == RIGHT_SHIFT_TOKEN) {
+    TokenType tt = parser_advance(parser)->type;
+    Operand *rhs = add_sub(parser);
+    Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
+    Operand *res = cfg_add_tmp(parser->cfg);
+    parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
 

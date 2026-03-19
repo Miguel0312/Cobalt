@@ -57,6 +57,8 @@ Operand *bitwise_xor(Parser *parser);
 
 Operand *bitwise_and(Parser *parser);
 
+Operand *shift(Parser *parser);
+
 Operand *add_sub(Parser *parser);
 
 Operand *mul_div(Parser *parser);

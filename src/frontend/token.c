@@ -75,6 +75,10 @@ char *token_type_to_string(TokenType type) {
     return "||";
   case L_AND_TOKEN:
     return "&&";
+  case LEFT_SHIFT_TOKEN:
+    return "<<";
+  case RIGHT_SHIFT_TOKEN:
+    return ">>";
   case LESS:
     return "<";
   case LESS_EQUAL:

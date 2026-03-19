@@ -10,6 +10,8 @@ typedef enum Operation {
   B_OR,
   B_XOR,
   B_AND,
+  LEFT_SHIFT,
+  RIGHT_SHIFT,
   ASSIGN,
   MOD,
   RET
@@ -41,7 +43,7 @@ Expr *new_expr_v(Operation op, int n, va_list operands);
 
 void print_expr(Expr *expr);
 
-void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char op_char);
+void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char *op_str);
 
 void print_operand(Operand *operand);
 

@@ -54,6 +54,11 @@ void generate_code(CodeGenerator *code_gen) {
       visit_div(code_gen, expr);
       break;
     }
+    case LEFT_SHIFT:
+    case RIGHT_SHIFT: {
+      visit_shift(code_gen, expr);
+      break;
+    }
     default: {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
@@ -64,6 +69,40 @@ void generate_code(CodeGenerator *code_gen) {
 
     cur = cur->next;
   }
+}
+
+void visit_shift(CodeGenerator *code_gen, Expr *expr) {
+  AssemblyOperand ecx;
+  ecx.type = AO_REGISTER, ecx.val.reg = "%ecx";
+
+  AssemblyOperand cl;
+  cl.type = AO_REGISTER, cl.val.reg = "%cl";
+
+  AssemblyOperand scratch;
+  scratch.type = AO_REGISTER, scratch.val.reg = "%eax";
+
+  char *instr = (expr->op == LEFT_SHIFT ? "sall" : "sarl");
+  Operand *dest = expr->params[0], *lhs = expr->params[1],
+          *rhs = expr->params[2];
+
+  AssemblyOperand dest_op, lhs_op, rhs_op;
+  dest_op.type = AO_ADDRESS;
+  lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  dest_op.val.operand = dest, lhs_op.val.operand = lhs,
+  rhs_op.val.operand = rhs;
+
+  mov(code_gen, &rhs_op, &ecx);
+  mov(code_gen, &lhs_op, &scratch);
+
+  // TODO: make a function to print this from a string and two AssemblyOperands
+  fprintf(code_gen->f, "%s ", instr);
+  print_assembly_operand(code_gen, &cl);
+  fprintf(code_gen->f, ", ");
+  print_assembly_operand(code_gen, &scratch);
+  fprintf(code_gen->f, "\n");
+
+  mov(code_gen, &scratch, &dest_op);
 }
 
 void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {

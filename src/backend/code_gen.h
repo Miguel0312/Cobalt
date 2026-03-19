@@ -26,6 +26,8 @@ CodeGenerator *new_code_generator(List *expressions, FILE *f);
 
 void generate_code(CodeGenerator *code_gen);
 
+void visit_shift(CodeGenerator *code_gen, Expr *expr);
+
 void visit_binary_op(CodeGenerator *code_gen, Expr *expr);
 
 void visit_div(CodeGenerator *code_gen, Expr *expr);
