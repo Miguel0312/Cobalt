@@ -33,8 +33,10 @@ typedef enum TokenType {
   LESS_EQUAL,
   IDENTIFIER,
   STRING_LITERAL,
+  CHAR_LITERAL,
   INT_LITERAL,
   INT_TS, // int type specifier
+  CHAR_TS,
   IF,
   ELSE,
   RETURN,

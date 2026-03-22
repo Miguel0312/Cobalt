@@ -22,11 +22,14 @@ typedef union OperandVal {
   unsigned long address;
 } OperandVal;
 
-typedef enum OperandType { OT_INT, OT_ID } OperandType;
+typedef enum OperandType { OT_INT, OT_CHAR, OT_ID } OperandType;
+
+typedef enum DataType { CHAR, INT } DataType;
 
 typedef struct Operand {
   OperandVal val;
-  OperandType type;
+  OperandType op_type;
+  DataType data_type;
   char *name;
 } Operand;
 
@@ -35,7 +38,8 @@ typedef struct Expr {
   Operand **params;
 } Expr;
 
-Operand *new_operand(OperandVal val, OperandType type, char *name);
+Operand *new_operand(OperandVal val, DataType data_type, OperandType op_type,
+                     char *name);
 
 Expr *new_expr(Operation op, int n, ...);
 

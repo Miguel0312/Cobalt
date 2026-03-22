@@ -91,6 +91,10 @@ char *token_type_to_string(TokenType type) {
     return "INT_LITERAL";
   case INT_TS:
     return "INT_TS";
+  case CHAR_LITERAL:
+    return "CHAR_LITERAL";
+  case CHAR_TS:
+    return "CHAR_TS";
   case IF:
     return "IF";
   case ELSE:

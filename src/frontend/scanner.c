@@ -171,6 +171,16 @@ List *scan_tokens(Scanner *scanner) {
       scanner_add_token(scanner, B_XOR_TOKEN);
       break;
     }
+    case '\'': {
+      int found = read_char(scanner);
+      if (!found) {
+        scanner_report_error(scanner,
+                             "Error trying to parse character literal");
+        break;
+      }
+      scanner_add_token(scanner, CHAR_LITERAL);
+      break;
+    }
     case ' ':
     case '\t':
     case '\r': {
@@ -184,7 +194,7 @@ List *scan_tokens(Scanner *scanner) {
       int found = 0;
       char msg[MSG_BUFFER_SIZE];
       if (isalpha(c) || c == '_') {
-        found = read_identifier(scanner, msg);
+        found = read_identifier(scanner);
         if (found) {
           TokenType tt = get_keyword(scanner);
           scanner_add_token(scanner, tt);
@@ -238,6 +248,13 @@ void scanner_add_token(Scanner *scanner, TokenType type) {
 
   strncpy(lexeme, scanner->src + scanner->start, lexeme_len);
 
+  if (type == CHAR_LITERAL) {
+    if (!(lexeme_len == 3 || (lexeme_len == 4 && lexeme[1] == '\\'))) {
+      scanner_report_error(scanner, "Invalid character literal");
+      return;
+    }
+  }
+
   Token *token = new_token(type, lexeme, scanner->line);
 
   list_append(scanner->tokens, token);
@@ -263,9 +280,8 @@ void scanner_report_error(Scanner *scanner, char *msg) {
   scanner->hasError = 1;
 }
 
-int read_identifier(Scanner *scanner, char *error_msg) {
+int read_identifier(Scanner *scanner) {
   assert(scanner != NULL);
-  assert(error_msg != NULL);
   while (isalnum(scanner_peek(scanner)) || scanner_peek(scanner) == '_') {
     scanner_advance(scanner);
   }
@@ -290,6 +306,19 @@ int read_number(Scanner *scanner, char *error_msg) {
   return 1;
 }
 
+int read_char(Scanner *scanner) {
+  while (!scanner_is_at_end(scanner) && scanner_peek(scanner) != '\'') {
+    scanner_advance(scanner);
+  }
+
+  if (scanner_is_at_end(scanner))
+    return 0;
+
+  // Consume the closing quote
+  scanner_advance(scanner);
+  return 1;
+}
+
 TokenType get_keyword(Scanner *scanner) {
   int lexeme_len = scanner->cur - scanner->start;
   if (lexeme_len >= MSG_BUFFER_SIZE) {
@@ -302,6 +331,9 @@ TokenType get_keyword(Scanner *scanner) {
 
   if (strcmp(lexeme, "int") == 0) {
     return INT_TS;
+  }
+  if (strcmp(lexeme, "char") == 0) {
+    return CHAR_TS;
   }
   if (strcmp(lexeme, "if") == 0) {
     return IF;

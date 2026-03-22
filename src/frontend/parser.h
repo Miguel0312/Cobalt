@@ -33,13 +33,15 @@ void parser_panic(Parser *parser);
 
 int parser_assert_token_type(Parser *parser, TokenType type);
 
-int parser_consume_token(Parser *parser, TokenType type);
+int parser_consume_token(Parser *parser, int n, ...);
 
 int parser_consume_if(Parser *parser, TokenType type);
 
 int parser_consume_if_not(Parser *parser, TokenType type);
 
 void parser_add_expr(Parser *parser, Operation op, int n, ...);
+
+int char_literal_value(Parser *parser, char *lexeme);
 
 void block(Parser *parser);
 

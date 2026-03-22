@@ -2,11 +2,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 
-Operand *new_operand(OperandVal val, OperandType type, char *name) {
+Operand *new_operand(OperandVal val, DataType data_type, OperandType op_type,
+                     char *name) {
   Operand *operand = malloc(sizeof(Operand));
 
   operand->val = val;
-  operand->type = type;
+  operand->op_type = op_type;
+  operand->data_type = data_type;
   operand->name = name;
 
   return operand;
