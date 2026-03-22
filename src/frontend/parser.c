@@ -34,15 +34,15 @@ Parser *new_parser(List *tokens) {
 }
 
 void parse_program(Parser *parser) {
-  parser_consume_token(parser, INT_TS);
+  parser_consume_token(parser, 1, INT_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   Token *main_token = parser_get_cur(parser);
   if (strcmp(main_token->lexeme, "main") != 0) {
     parser_report_error(parser, "Expected function to be called main");
   }
   parser_advance(parser);
-  parser_consume_token(parser, LEFT_PAREN);
-  parser_consume_token(parser, RIGHT_PAREN);
+  parser_consume_token(parser, 1, LEFT_PAREN);
+  parser_consume_token(parser, 1, RIGHT_PAREN);
 
   block(parser);
 
@@ -114,12 +114,37 @@ int parser_assert_token_type(Parser *parser, TokenType type) {
   return 0;
 }
 
-int parser_consume_token(Parser *parser, TokenType type) {
+int parser_consume_token(Parser *parser, int n, ...) {
   assert(parser != NULL);
-  if (parser_assert_token_type(parser, type)) {
-    parser_advance(parser);
-    return 1;
+  va_list args;
+  va_start(args, n);
+
+  TokenType cur_type = parser_peek(parser)->type;
+  int offset = 0;
+  char token_list_str[MSG_BUFFER_SIZE];
+
+  for (int i = 0; i < n; i++) {
+    TokenType type = va_arg(args, TokenType);
+    if (type == cur_type) {
+      va_end(args);
+      parser_advance(parser);
+      return 0;
+    } else {
+      if (i == 0) {
+        offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
+                           "%s", token_type_to_string(type));
+      } else {
+        offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
+                           ", %s", token_type_to_string(type));
+      }
+    }
   }
+
+  va_end(args);
+
+  char msg[MSG_BUFFER_SIZE];
+  snprintf(msg, MSG_BUFFER_SIZE - offset, "Token %s not in %s",
+           token_type_to_string(cur_type), token_list_str);
 
   return 0;
 }
@@ -151,7 +176,7 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...) {
   va_end(args);
 }
 void block(Parser *parser) {
-  parser_consume_token(parser, LEFT_BRACE);
+  parser_consume_token(parser, 1, LEFT_BRACE);
 
   cfg_push_bb(parser->cfg);
 
@@ -160,6 +185,7 @@ void block(Parser *parser) {
          (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
     switch (cur_type) {
     case INT_TS:
+    case CHAR_TS:
       var_decl(parser);
       break;
     case RETURN:
@@ -167,7 +193,7 @@ void block(Parser *parser) {
       break;
     case IDENTIFIER:
       expr(parser);
-      parser_consume_token(parser, SEMICOLON);
+      parser_consume_token(parser, 1, SEMICOLON);
       break;
     case LEFT_BRACE:
       block(parser);
@@ -180,10 +206,11 @@ void block(Parser *parser) {
   assert(!is_stack_empty(parser->cfg->bb_stack));
   cfg_pop_bb(parser->cfg);
 
-  parser_consume_token(parser, RIGHT_BRACE);
+  parser_consume_token(parser, 1, RIGHT_BRACE);
 }
 Operand *var_decl(Parser *parser) {
-  parser_consume_token(parser, INT_TS);
+  DataType data_type = (parser_peek(parser)->type == INT_TS ? INT : CHAR);
+  parser_consume_token(parser, 2, INT_TS, CHAR_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   Token *token = parser_advance(parser);
   if (hash_map_get(cfg_get_cur_bb(parser->cfg)->operands, token->lexeme) !=
@@ -196,18 +223,18 @@ Operand *var_decl(Parser *parser) {
     return NULL;
   }
 
-  Operand *var = cfg_add_var(parser->cfg, OT_ID, token->lexeme);
+  Operand *var = cfg_add_var(parser->cfg, data_type, OT_ID, token->lexeme);
 
   if (parser_get_cur(parser)->type == SEMICOLON) {
-    parser_consume_token(parser, SEMICOLON);
+    parser_consume_token(parser, 1, SEMICOLON);
     return var;
   }
 
-  parser_consume_token(parser, EQUAL);
+  parser_consume_token(parser, 1, EQUAL);
 
   Operand *rhs = expr(parser);
 
-  parser_consume_token(parser, SEMICOLON);
+  parser_consume_token(parser, 1, SEMICOLON);
 
   parser_add_expr(parser, ASSIGN, 2, var, rhs);
 
@@ -233,7 +260,7 @@ Operand *var_assignment(Parser *parser) {
     parser_report_error(parser, msg);
   }
 
-  parser_consume_token(parser, EQUAL);
+  parser_consume_token(parser, 1, EQUAL);
 
   Operand *rhs = expr(parser);
 
@@ -353,7 +380,10 @@ Operand *primary_expr(Parser *parser) {
   Operand *operand;
   if (token->type == INT_LITERAL) {
     OperandVal val = {.int_val = atoi(token->lexeme)};
-    operand = new_operand(val, OT_INT, NULL);
+    operand = new_operand(val, INT, OT_INT, NULL);
+  } else if (token->type == CHAR_LITERAL) {
+    OperandVal val = {.int_val = char_literal_value(parser, token->lexeme)};
+    operand = new_operand(val, CHAR, OT_CHAR, NULL);
   } else if (token->type == IDENTIFIER) {
     operand = basic_block_get(cfg_get_cur_bb(parser->cfg), token->lexeme);
     if (operand == NULL) {
@@ -365,14 +395,14 @@ Operand *primary_expr(Parser *parser) {
     }
   } else if (token->type == LEFT_PAREN) {
     operand = expr(parser);
-    parser_consume_token(parser, RIGHT_PAREN);
+    parser_consume_token(parser, 1, RIGHT_PAREN);
   } else {
     parser_report_error(parser, "Unexpected token while parsing primary_expr");
     return NULL;
   }
 
   if (parser_consume_if(parser, EQUAL)) {
-    if (operand->type != OT_ID) {
+    if (operand->op_type != OT_ID) {
       parser_report_error(parser, "Expression is not assignable");
       return operand;
     }
@@ -385,11 +415,11 @@ Operand *primary_expr(Parser *parser) {
 }
 
 Operand *return_stmt(Parser *parser) {
-  parser_consume_token(parser, RETURN);
+  parser_consume_token(parser, 1, RETURN);
 
   Operand *ret_val = expr(parser);
 
-  parser_consume_token(parser, SEMICOLON);
+  parser_consume_token(parser, 1, SEMICOLON);
 
   parser_add_expr(parser, RET, 1, ret_val);
 
@@ -411,4 +441,36 @@ Parser *parser_free(Parser *parser) {
   free(parser);
 
   return NULL;
+}
+
+int char_literal_value(Parser *parser, char *lexeme) {
+  if (lexeme[1] != '\\') {
+    return lexeme[1];
+  }
+
+  switch (lexeme[2]) {
+  case '0':
+    return 0;
+  case 'a':
+    return 7;
+  case 'b':
+    return 8;
+  case 't':
+    return 9;
+  case 'n':
+    return 10;
+  case 'v':
+    return 11;
+  case 'f':
+    return 12;
+  case 'r':
+    return 13;
+  // Single Quote and anti slash
+  case 39:
+  case 92:
+    return lexeme[2];
+  }
+
+  parser_report_error(parser, "Char literal has invalid escape sequence");
+  return 0;
 }

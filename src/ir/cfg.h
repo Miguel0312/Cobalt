@@ -20,7 +20,8 @@ void cfg_pop_bb(CFG *cfg);
 
 Operand *cfg_get_var(CFG *cfg, char *name);
 
-Operand *cfg_add_var(CFG *cfg, OperandType type, char *name);
+Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
+                     char *name);
 
 Operand *cfg_add_tmp(CFG *cfg);
 

@@ -31,9 +31,11 @@ char scanner_peek(Scanner *scanner);
 
 void scanner_report_error(Scanner *scanner, char *msg);
 
-int read_identifier(Scanner *scanner, char *error_msg);
+int read_identifier(Scanner *scanner);
 
 int read_number(Scanner *scanner, char *error_msg);
+
+int read_char(Scanner *scanner);
 
 TokenType get_keyword(Scanner *scanner);
 

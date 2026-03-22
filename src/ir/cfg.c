@@ -41,14 +41,15 @@ Operand *cfg_get_var(CFG *cfg, char *name) {
   return NULL;
 }
 
-Operand *cfg_add_var(CFG *cfg, OperandType type, char *name) {
+Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
+                     char *name) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
   cfg->offset += 4;
   bb->stack_space += 4;
 
   unsigned long address = cfg->offset;
   OperandVal val = {.address = address};
-  Operand *operand = new_operand(val, type, name);
+  Operand *operand = new_operand(val, data_type, op_type, name);
 
   hash_map_insert(bb->operands, name, operand);
 
