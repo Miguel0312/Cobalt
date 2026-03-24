@@ -4,13 +4,13 @@
 #include "utils/hash_map.h"
 
 typedef struct BasicBlock {
-  HashMap *operands;
   unsigned long stack_space;
+  List *expressions;
+  char *label;
+  struct BasicBlock *exit_true, *exit_false;
 } BasicBlock;
 
-BasicBlock *new_basic_block(void);
-
-void *basic_block_get(BasicBlock *bb, char *name);
+BasicBlock *new_basic_block(char *label);
 
 void basic_block_free(BasicBlock *bb);
 

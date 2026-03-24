@@ -9,7 +9,6 @@
 #include "ir/cfg.h"
 #include "ir/expr.h"
 #include "parser.h"
-#include "utils/hash_map.h"
 
 #define MSG_BUFFER_SIZE 256
 
@@ -24,7 +23,6 @@ Parser *new_parser(List *tokens) {
   assert(((Token *)tokens->end->data)->type == EOF_TOKEN);
 
   parser->cur_token = tokens->root;
-  parser->program = new_list();
   parser->hasError = 0;
   parser->cfg = new_cfg();
 
@@ -36,14 +34,6 @@ Parser *new_parser(List *tokens) {
 void parser_free(Parser *parser) {
   if (parser == NULL)
     return;
-
-  Node *cur = parser->program->root;
-  while (cur != NULL) {
-    Expr *expr = cur->data;
-    expr_free(expr);
-    cur = cur->next;
-  }
-  list_free(parser->program);
 
   cfg_free(parser->cfg);
 
@@ -66,8 +56,6 @@ void parse_program(Parser *parser) {
   if (!parser_is_at_end(parser)) {
     parser_report_error(parser, "Expected EOF");
   }
-  // Make sure that all basic blocks stack memory is freed
-  assert(parser->cfg->offset == 0);
 }
 
 int parser_is_at_end(Parser *parser) {
@@ -189,13 +177,14 @@ int parser_consume_if_not(Parser *parser, TokenType type) {
 void parser_add_expr(Parser *parser, Operation op, int n, ...) {
   va_list args;
   va_start(args, n);
-  list_append(parser->program, new_expr_v(op, n, args));
+  list_append(cfg_get_cur_bb(parser->cfg)->expressions,
+              new_expr_v(op, n, args));
   va_end(args);
 }
-void block(Parser *parser) {
+BasicBlock *block(Parser *parser) {
   parser_consume_token(parser, 1, LEFT_BRACE);
-
   cfg_push_bb(parser->cfg);
+  cfg_push_symbol_table(parser->cfg);
 
   TokenType cur_type;
   while (!parser_is_at_end(parser) &&
@@ -215,23 +204,31 @@ void block(Parser *parser) {
     case LEFT_BRACE:
       block(parser);
       break;
+    case IF:
+      if_stmt(parser);
+      break;
     default:
       parser_report_error(parser, "Unexpected token");
     }
   }
 
   assert(!is_stack_empty(parser->cfg->bb_stack));
-  cfg_pop_bb(parser->cfg);
 
   parser_consume_token(parser, 1, RIGHT_BRACE);
+
+  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(parser->cfg);
+
+  cfg_pop_symbol_table(parser->cfg);
+
+  return cfg_push_bb(parser->cfg);
 }
 Operand *var_decl(Parser *parser) {
   DataType data_type = (parser_get_cur(parser)->type == INT_TS ? INT : CHAR);
   parser_consume_token(parser, 2, INT_TS, CHAR_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   Token *token = parser_advance(parser);
-  if (hash_map_get(cfg_get_cur_bb(parser->cfg)->operands, token->lexeme) !=
-      NULL) {
+  if (cfg_has_var_in_scope(parser->cfg, token->lexeme)) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
              "Variable %s has already been declared in this scope",
@@ -256,6 +253,20 @@ Operand *var_decl(Parser *parser) {
   parser_add_expr(parser, ASSIGN, 2, var, rhs);
 
   return var;
+}
+
+void if_stmt(Parser *parser) {
+  parser_consume_token(parser, 1, IF);
+  parser_consume_token(parser, 1, LEFT_PAREN);
+  Operand *cond = expr(parser);
+  parser_consume_token(parser, 1, RIGHT_PAREN);
+
+  BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+  parser_add_expr(parser, TEST, 1, cond);
+
+  BasicBlock *finally_block = block(parser);
+
+  cur_bb->exit_false = finally_block;
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }
@@ -429,7 +440,7 @@ Operand *primary_expr(Parser *parser) {
     operand = new_operand(val, CHAR, OT_CHAR, NULL);
     list_append(parser->cfg->operands, operand);
   } else if (token->type == IDENTIFIER) {
-    operand = basic_block_get(cfg_get_cur_bb(parser->cfg), token->lexeme);
+    operand = cfg_get_var(parser->cfg, token->lexeme);
     if (operand == NULL) {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE,

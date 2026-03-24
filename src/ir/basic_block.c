@@ -1,20 +1,29 @@
 #include "basic_block.h"
+#include "ir/expr.h"
 #include <stdlib.h>
 
-BasicBlock *new_basic_block(void) {
+BasicBlock *new_basic_block(char *label) {
   BasicBlock *bb = malloc(sizeof(BasicBlock));
 
-  bb->operands = new_hash_map(string_hash, string_cmp);
   bb->stack_space = 0;
+  bb->label = label;
+  bb->exit_false = bb->exit_true = NULL;
+  bb->expressions = new_list();
 
   return bb;
 }
 
-void *basic_block_get(BasicBlock *bb, char *name) {
-  return hash_map_get(bb->operands, name);
-}
-
 void basic_block_free(BasicBlock *bb) {
-  hash_map_free(bb->operands);
+  Node *cur = bb->expressions->root;
+
+  while (cur != NULL) {
+    Expr *expr = cur->data;
+    expr_free(expr);
+    cur = cur->next;
+  }
+
+  list_free(bb->expressions);
+
+  free(bb->label);
   free(bb);
 }

@@ -51,7 +51,6 @@ int main(int argc, char **argv) {
   Parser *parser = new_parser(scanner->tokens);
 
   assert(parser != NULL);
-  assert(parser->program != NULL);
 
   if (parser->hasError) {
     parser_free(parser);
@@ -60,13 +59,20 @@ int main(int argc, char **argv) {
     return PARSING_ERROR;
   }
 
-  Node *cur = parser->program->root;
-  while (cur != NULL) {
-    Expr *expr = cur->data;
+  Node *bb_cur = parser->cfg->bbs->root;
+  while (bb_cur != NULL) {
+    BasicBlock *bb = bb_cur->data;
+    Node *cur = bb->expressions->root;
+    printf("%s:\n", bb->label);
+    while (cur != NULL) {
+      Expr *expr = cur->data;
 
-    print_expr(expr);
+      print_expr(expr);
 
-    cur = cur->next;
+      cur = cur->next;
+    }
+
+    bb_cur = bb_cur->next;
   }
 
   char *assembly_file;
@@ -85,7 +91,7 @@ int main(int argc, char **argv) {
   if (assembly_file_in_heap) {
     free(assembly_file);
   }
-  CodeGenerator *code_gen = new_code_generator(parser->program, f);
+  CodeGenerator *code_gen = new_code_generator(parser->cfg, f);
   fclose(f);
 
   int hasError = code_gen->hasError;

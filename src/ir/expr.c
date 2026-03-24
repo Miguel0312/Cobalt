@@ -53,6 +53,13 @@ void print_expr(Expr *expr) {
     printf("\n");
     return;
   }
+  case TEST: {
+    Operand *operand = expr->params[0];
+    printf("TEST ");
+    print_operand(operand);
+    printf("\n");
+    return;
+  }
   case ADD:
   case SUB:
   case MUL:
@@ -158,6 +165,8 @@ char *operation_to_string(Operation op) {
     return "LEFT_SHIFT";
   case RIGHT_SHIFT:
     return "RIGHT_SHIFT";
+  case TEST:
+    return "TEST";
   case RET:
     return "RET";
   }

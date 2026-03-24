@@ -8,7 +8,6 @@
 
 typedef struct Parser {
   List *tokens;
-  List *program;
   Node *cur_token;
   CFG *cfg;
 
@@ -45,9 +44,11 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...);
 
 int char_literal_value(Parser *parser, char *lexeme);
 
-void block(Parser *parser);
+BasicBlock *block(Parser *parser);
 
 Operand *var_decl(Parser *parser);
+
+void if_stmt(Parser *parser);
 
 Operand *return_stmt(Parser *parser);
 

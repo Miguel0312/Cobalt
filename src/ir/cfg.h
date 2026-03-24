@@ -10,20 +10,27 @@ typedef struct CFG {
   List *bbs;
   Stack *bb_stack;
   // Keep track of all operands to be able to free them (once and only once)
+  Stack *symbol_table;
   List *operands;
   unsigned long offset;
 } CFG;
 
 CFG *new_cfg(void);
 
-void cfg_push_bb(CFG *cfg);
+BasicBlock *cfg_push_bb(CFG *cfg);
 
-void cfg_pop_bb(CFG *cfg);
+BasicBlock *cfg_pop_bb(CFG *cfg);
+
+void cfg_push_symbol_table(CFG *cfg);
+
+void cfg_pop_symbol_table(CFG *cfg);
 
 Operand *cfg_get_var(CFG *cfg, char *name);
 
 Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
                      char *name);
+
+int cfg_has_var_in_scope(CFG *cfg, char *name);
 
 Operand *cfg_add_tmp(CFG *cfg, DataType data_type);
 

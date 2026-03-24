@@ -5,13 +5,13 @@
 
 #define OPERAND(r) &(r).reg[(r).index]
 
-CodeGenerator *new_code_generator(List *expressions, FILE *f) {
-  assert(expressions != NULL);
+CodeGenerator *new_code_generator(CFG *cfg, FILE *f) {
+  assert(cfg != NULL);
   assert(f != NULL);
 
   CodeGenerator *code_gen = malloc(sizeof(CodeGenerator));
 
-  code_gen->program = expressions;
+  code_gen->cfg = cfg;
   code_gen->f = f;
   code_gen->hasError = 0;
 
@@ -56,7 +56,18 @@ void generate_code(CodeGenerator *code_gen) {
                        "pushq %%rbp\n"
                        "movq %%rsp, %%rbp\n");
 
-  Node *cur = code_gen->program->root;
+  Node *cur = code_gen->cfg->bbs->root;
+  while (cur != NULL) {
+    visit_bb(code_gen, cur->data);
+    cur = cur->next;
+  }
+}
+
+void visit_bb(CodeGenerator *code_gen, BasicBlock *bb) {
+  Node *cur = bb->expressions->root;
+
+  fprintf(code_gen->f, "%s:\n", bb->label);
+
   while (cur != NULL) {
     Expr *expr = cur->data;
 
@@ -88,6 +99,10 @@ void generate_code(CodeGenerator *code_gen) {
       visit_shift(code_gen, expr);
       break;
     }
+    case TEST: {
+      visit_test(code_gen, expr);
+      break;
+    }
     default: {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
@@ -97,6 +112,13 @@ void generate_code(CodeGenerator *code_gen) {
     }
 
     cur = cur->next;
+  }
+
+  if (bb->exit_true != NULL) {
+    fprintf(code_gen->f, "jnz %s\n", bb->exit_true->label);
+  }
+  if (bb->exit_false != NULL) {
+    fprintf(code_gen->f, "jz %s\n", bb->exit_false->label);
   }
 }
 
@@ -131,7 +153,8 @@ void visit_shift(CodeGenerator *code_gen, Expr *expr) {
   mov(code_gen, &rhs_op, OPERAND(ecx));
   mov(code_gen, &lhs_op, OPERAND(scratch));
 
-  // TODO: make a function to print this from a string and two AssemblyOperands
+  // TODO: make a function to print this from a string and two
+  // AssemblyOperands
   fprintf(code_gen->f, "%s ", instr);
   print_assembly_operand(code_gen, OPERAND(cl));
   fprintf(code_gen->f, ", ");
@@ -297,9 +320,24 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr) {
                        "ret\n");
 }
 
+void visit_test(CodeGenerator *code_gen, Expr *expr) {
+  RegRepr eax = {.reg = code_gen->A, .index = 2};
+
+  AssemblyOperand op1;
+  op1.val.operand = expr->params[0];
+  op1.type = (op1.val.operand->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  if (op1.type == AO_ADDRESS) {
+    op1.sz = get_var_size(expr->params[0]->data_type);
+  }
+
+  mov(code_gen, &op1, OPERAND(eax));
+
+  fprintf(code_gen->f, "testl %%eax, %%eax\n");
+}
+
 void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
-  // TODO: check that the op types are valid. Can't move from operand to operand
-  // for example
+  // TODO: check that the op types are valid. Can't move from operand to
+  // operand for example
   AssemblyOperand *middle = NULL, *middle2 = NULL;
   int use_scratch = src->type == AO_ADDRESS && dest->type == AO_ADDRESS;
 

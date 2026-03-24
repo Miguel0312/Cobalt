@@ -112,10 +112,10 @@ for file in c_files:
             print(f"{res.stderr.decode()}")
         passing = False
     elif compilation_should_fail and res.returncode == 0:
-        print(compilation_should_fail)
         print(
             f"{bcolors.FAIL}Cobalt should have detected errors with {file}{bcolors.ENDC}"
         )
+        passing = False
 
     if not compilation_should_fail and passing:
         cobalt_res = subprocess.run(
