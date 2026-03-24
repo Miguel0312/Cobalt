@@ -183,7 +183,7 @@ void parser_add_expr(Parser *parser, Operation op, int n, ...) {
 }
 BasicBlock *block(Parser *parser) {
   parser_consume_token(parser, 1, LEFT_BRACE);
-  cfg_push_bb(parser->cfg);
+  BasicBlock *bb = cfg_push_bb(parser->cfg);
   cfg_push_symbol_table(parser->cfg);
 
   TokenType cur_type;
@@ -221,7 +221,9 @@ BasicBlock *block(Parser *parser) {
 
   cfg_pop_symbol_table(parser->cfg);
 
-  return cfg_push_bb(parser->cfg);
+  cfg_push_bb(parser->cfg);
+
+  return bb;
 }
 Operand *var_decl(Parser *parser) {
   DataType data_type = (parser_get_cur(parser)->type == INT_TS ? INT : CHAR);
@@ -264,9 +266,17 @@ void if_stmt(Parser *parser) {
   BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
   parser_add_expr(parser, TEST, 1, cond);
 
-  BasicBlock *finally_block = block(parser);
+  BasicBlock *true_bb = block(parser);
 
-  cur_bb->exit_false = finally_block;
+  BasicBlock *false_bb = cfg_get_cur_bb(parser->cfg);
+
+  cur_bb->exit_false = false_bb;
+
+  if (parser_consume_if(parser, ELSE)) {
+    block(parser);
+    BasicBlock *finally_block = cfg_get_cur_bb(parser->cfg);
+    true_bb->exit_true = true_bb->exit_false = finally_block;
+  }
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }

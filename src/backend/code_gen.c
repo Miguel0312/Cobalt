@@ -114,6 +114,11 @@ void visit_bb(CodeGenerator *code_gen, BasicBlock *bb) {
     cur = cur->next;
   }
 
+  if (bb->exit_true != NULL && bb->exit_false == bb->exit_true) {
+    fprintf(code_gen->f, "jmp %s\n", bb->exit_true->label);
+    return;
+  }
+
   if (bb->exit_true != NULL) {
     fprintf(code_gen->f, "jnz %s\n", bb->exit_true->label);
   }

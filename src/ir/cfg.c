@@ -51,7 +51,7 @@ void cfg_pop_symbol_table(CFG *cfg) {
   // occupied by the operands in it and free it here
 
   // cfg_get_cur_bb(cfg)->stack_space;
-  stack_pop(cfg->symbol_table);
+  hash_map_free(stack_pop(cfg->symbol_table));
 }
 
 Operand *cfg_get_var(CFG *cfg, char *name) {
@@ -134,6 +134,8 @@ void cfg_free(CFG *cfg) {
   list_free(cfg->operands);
 
   stack_free(cfg->bb_stack);
+
+  stack_free(cfg->symbol_table);
 
   free(cfg);
 }
