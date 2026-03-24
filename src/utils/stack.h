@@ -15,4 +15,6 @@ void stack_push(Stack *stack, void *data);
 
 int is_stack_empty(Stack *stack);
 
+void stack_free(Stack *stack);
+
 #endif // !CO_STACK_H

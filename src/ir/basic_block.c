@@ -13,3 +13,8 @@ BasicBlock *new_basic_block(void) {
 void *basic_block_get(BasicBlock *bb, char *name) {
   return hash_map_get(bb->operands, name);
 }
+
+void basic_block_free(BasicBlock *bb) {
+  hash_map_free(bb->operands);
+  free(bb);
+}

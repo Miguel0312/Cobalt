@@ -17,6 +17,8 @@ typedef struct Scanner {
 
 Scanner *new_scanner(char *src, unsigned long src_len);
 
+void scanner_free(Scanner *scanner);
+
 List *scan_tokens(Scanner *scanner);
 
 int scanner_is_at_end(const Scanner *scanner);
@@ -38,7 +40,5 @@ int read_number(Scanner *scanner, char *error_msg);
 int read_char(Scanner *scanner);
 
 TokenType get_keyword(Scanner *scanner);
-
-Scanner *scanner_free(Scanner *scanner);
 
 #endif // !CO_SCANNER_H

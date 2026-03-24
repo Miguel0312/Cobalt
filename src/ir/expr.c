@@ -126,9 +126,11 @@ void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char *op_str) {
 }
 
 void print_operand(Operand *operand) {
-  if (operand->type == OT_INT)
+  if (operand->op_type == OT_INT)
     printf("%d", operand->val.int_val);
-  else if (operand->type == OT_ID)
+  else if (operand->op_type == OT_CHAR)
+    printf("'%c'", operand->val.int_val);
+  else if (operand->op_type == OT_ID)
     printf("%s", operand->name);
 }
 
@@ -163,12 +165,25 @@ char *operation_to_string(Operation op) {
   return "ERROR";
 }
 
-Expr *expr_free(Expr *expr) {
+void expr_free(Expr *expr) {
   if (expr == NULL)
-    return NULL;
+    return;
 
   free(expr->params);
   free(expr);
+}
 
-  return NULL;
+void operand_free(Operand *operand) {
+  // Is tmp?
+  if (operand->name != NULL && operand->name[0] == '!')
+    free(operand->name);
+  free(operand);
+}
+
+DataType get_data_type_from_operands(DataType type1, DataType type2) {
+  if (type1 == INT || type2 == INT) {
+    return INT;
+  }
+
+  return CHAR;
 }

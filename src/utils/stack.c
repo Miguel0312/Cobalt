@@ -37,3 +37,8 @@ void stack_push(Stack *stack, void *data) {
 }
 
 int is_stack_empty(Stack *stack) { return stack->elements->root == NULL; }
+
+void stack_free(Stack *stack) {
+  list_free(stack->elements);
+  free(stack);
+}

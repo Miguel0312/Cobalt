@@ -18,10 +18,14 @@ typedef struct HashMap {
   List **data;
 } HashMap;
 
-Entry *new_entry(void *key, void *val);
-
 HashMap *new_hash_map(unsigned long (*hash_func)(void *),
                       int (*key_compare)(void *, void *));
+
+void hash_map_free(HashMap *hash_map);
+
+Entry *new_entry(void *key, void *val);
+
+void entry_free(Entry *entry);
 
 void *hash_map_get(HashMap *hash_map, void *key);
 

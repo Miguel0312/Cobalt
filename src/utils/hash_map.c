@@ -3,15 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-Entry *new_entry(void *key, void *val) {
-  Entry *entry = malloc(sizeof(Entry));
-
-  entry->key = key;
-  entry->value = val;
-
-  return entry;
-}
-
 HashMap *new_hash_map(unsigned long (*hash_func)(void *),
                       int (*key_compare)(void *, void *)) {
   HashMap *hash_map = malloc(sizeof(HashMap));
@@ -23,6 +14,34 @@ HashMap *new_hash_map(unsigned long (*hash_func)(void *),
   hash_map->key_compare = key_compare;
 
   return hash_map;
+}
+
+void hash_map_free(HashMap *hash_map) {
+  for (int i = 0; i < hash_map->N; i++) {
+    if (hash_map->data[i] == NULL)
+      continue;
+
+    Node *cur = hash_map->data[i]->root;
+    while (cur != NULL) {
+      Entry *entry = cur->data;
+      free(entry);
+
+      cur = cur->next;
+    }
+    list_free(hash_map->data[i]);
+  }
+
+  free(hash_map->data);
+  free(hash_map);
+}
+
+Entry *new_entry(void *key, void *val) {
+  Entry *entry = malloc(sizeof(Entry));
+
+  entry->key = key;
+  entry->value = val;
+
+  return entry;
 }
 
 void *hash_map_get(HashMap *hash_map, void *key) {

@@ -45,6 +45,8 @@ Expr *new_expr(Operation op, int n, ...);
 
 Expr *new_expr_v(Operation op, int n, va_list operands);
 
+void expr_free(Expr *expr);
+
 void print_expr(Expr *expr);
 
 void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char *op_str);
@@ -53,6 +55,18 @@ void print_operand(Operand *operand);
 
 char *operation_to_string(Operation op);
 
-Expr *expr_free(Expr *expr);
+void operand_free(Operand *operand);
+
+DataType get_data_type_from_operands(DataType type1, DataType type2);
+
+static inline int get_var_size(DataType type) {
+  switch (type) {
+  case INT:
+    return 4;
+  case CHAR:
+    return 1;
+  }
+  return 0;
+}
 
 #endif // !CO_EXPR_H

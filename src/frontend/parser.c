@@ -33,6 +33,23 @@ Parser *new_parser(List *tokens) {
   return parser;
 }
 
+void parser_free(Parser *parser) {
+  if (parser == NULL)
+    return;
+
+  Node *cur = parser->program->root;
+  while (cur != NULL) {
+    Expr *expr = cur->data;
+    expr_free(expr);
+    cur = cur->next;
+  }
+  list_free(parser->program);
+
+  cfg_free(parser->cfg);
+
+  free(parser);
+}
+
 void parse_program(Parser *parser) {
   parser_consume_token(parser, 1, INT_TS);
   parser_assert_token_type(parser, IDENTIFIER);
@@ -119,7 +136,7 @@ int parser_consume_token(Parser *parser, int n, ...) {
   va_list args;
   va_start(args, n);
 
-  TokenType cur_type = parser_peek(parser)->type;
+  TokenType cur_type = parser_get_cur(parser)->type;
   int offset = 0;
   char token_list_str[MSG_BUFFER_SIZE];
 
@@ -209,7 +226,7 @@ void block(Parser *parser) {
   parser_consume_token(parser, 1, RIGHT_BRACE);
 }
 Operand *var_decl(Parser *parser) {
-  DataType data_type = (parser_peek(parser)->type == INT_TS ? INT : CHAR);
+  DataType data_type = (parser_get_cur(parser)->type == INT_TS ? INT : CHAR);
   parser_consume_token(parser, 2, INT_TS, CHAR_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   Token *token = parser_advance(parser);
@@ -275,7 +292,11 @@ Operand *bitwise_or(Parser *parser) {
   while (parser_get_cur(parser)->type == B_OR_TOKEN) {
     parser_advance(parser);
     Operand *rhs = bitwise_xor(parser);
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
     parser_add_expr(parser, B_OR, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -289,7 +310,11 @@ Operand *bitwise_xor(Parser *parser) {
   while (parser_get_cur(parser)->type == B_XOR_TOKEN) {
     parser_advance(parser);
     Operand *rhs = bitwise_and(parser);
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
     parser_add_expr(parser, B_XOR, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -303,7 +328,12 @@ Operand *bitwise_and(Parser *parser) {
   while (parser_get_cur(parser)->type == B_AND_TOKEN) {
     parser_advance(parser);
     Operand *rhs = shift(parser);
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+
     parser_add_expr(parser, B_AND, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -319,7 +349,11 @@ Operand *shift(Parser *parser) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = add_sub(parser);
     Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -335,7 +369,11 @@ Operand *add_sub(Parser *parser) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = mul_div(parser);
     Operation op = (tt == PLUS ? ADD : SUB);
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -366,7 +404,11 @@ Operand *mul_div(Parser *parser) {
       parser_report_error(parser, "Unexpected token in mul_div");
       return NULL;
     }
-    Operand *res = cfg_add_tmp(parser->cfg);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -381,9 +423,11 @@ Operand *primary_expr(Parser *parser) {
   if (token->type == INT_LITERAL) {
     OperandVal val = {.int_val = atoi(token->lexeme)};
     operand = new_operand(val, INT, OT_INT, NULL);
+    list_append(parser->cfg->operands, operand);
   } else if (token->type == CHAR_LITERAL) {
     OperandVal val = {.int_val = char_literal_value(parser, token->lexeme)};
     operand = new_operand(val, CHAR, OT_CHAR, NULL);
+    list_append(parser->cfg->operands, operand);
   } else if (token->type == IDENTIFIER) {
     operand = basic_block_get(cfg_get_cur_bb(parser->cfg), token->lexeme);
     if (operand == NULL) {
@@ -422,23 +466,6 @@ Operand *return_stmt(Parser *parser) {
   parser_consume_token(parser, 1, SEMICOLON);
 
   parser_add_expr(parser, RET, 1, ret_val);
-
-  return NULL;
-}
-
-Parser *parser_free(Parser *parser) {
-  if (parser == NULL)
-    return NULL;
-
-  Node *cur = parser->program->root;
-  while (cur != NULL) {
-    Expr *expr = cur->data;
-    expr_free(expr);
-    cur = cur->next;
-  }
-  list_free(parser->program);
-
-  free(parser);
 
   return NULL;
 }

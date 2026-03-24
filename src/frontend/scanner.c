@@ -354,9 +354,9 @@ TokenType get_keyword(Scanner *scanner) {
   return IDENTIFIER;
 }
 
-Scanner *scanner_free(Scanner *scanner) {
+void scanner_free(Scanner *scanner) {
   if (scanner == NULL)
-    return NULL;
+    return;
 
   free(scanner->src);
 
@@ -369,6 +369,4 @@ Scanner *scanner_free(Scanner *scanner) {
   list_free(scanner->tokens);
 
   free(scanner);
-
-  return NULL;
 }

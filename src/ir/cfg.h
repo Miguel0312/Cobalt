@@ -9,6 +9,8 @@
 typedef struct CFG {
   List *bbs;
   Stack *bb_stack;
+  // Keep track of all operands to be able to free them (once and only once)
+  List *operands;
   unsigned long offset;
 } CFG;
 
@@ -23,7 +25,9 @@ Operand *cfg_get_var(CFG *cfg, char *name);
 Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
                      char *name);
 
-Operand *cfg_add_tmp(CFG *cfg);
+Operand *cfg_add_tmp(CFG *cfg, DataType data_type);
+
+void cfg_free(CFG *cfg);
 
 static inline BasicBlock *cfg_get_cur_bb(CFG *cfg) {
   return cfg->bb_stack->elements->end->data;

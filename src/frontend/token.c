@@ -13,14 +13,14 @@ Token *new_token(TokenType type, char *lexeme, int line) {
   return token;
 }
 
-Token *token_free(Token *token) {
+void token_free(Token *token) {
   if (token == NULL)
-    return NULL;
+    return;
 
   free(token->lexeme);
   free(token);
 
-  return NULL;
+  return;
 }
 
 char *token_type_to_string(TokenType type) {

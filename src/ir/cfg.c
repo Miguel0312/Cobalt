@@ -10,6 +10,7 @@ CFG *new_cfg(void) {
 
   cfg->bbs = new_list();
   cfg->bb_stack = new_stack();
+  cfg->operands = new_list();
   cfg->offset = 0;
 
   return cfg;
@@ -44,22 +45,30 @@ Operand *cfg_get_var(CFG *cfg, char *name) {
 Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
                      char *name) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
-  cfg->offset += 4;
-  bb->stack_space += 4;
+
+  int delta = get_var_size(data_type);
+
+  cfg->offset += delta;
+  bb->stack_space += delta;
 
   unsigned long address = cfg->offset;
   OperandVal val = {.address = address};
   Operand *operand = new_operand(val, data_type, op_type, name);
+
+  list_append(cfg->operands, operand);
 
   hash_map_insert(bb->operands, name, operand);
 
   return operand;
 }
 
-Operand *cfg_add_tmp(CFG *cfg) {
+Operand *cfg_add_tmp(CFG *cfg, DataType data_type) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
-  cfg->offset += 4;
-  bb->stack_space += 4;
+
+  int delta = get_var_size(data_type);
+
+  cfg->offset += delta;
+  bb->stack_space += delta;
 
   unsigned long address = cfg->offset;
   OperandVal val = {.address = address};
@@ -67,7 +76,33 @@ Operand *cfg_add_tmp(CFG *cfg) {
 
   snprintf(name, 10, "!%lu", cfg->offset);
 
-  Operand *operand = new_operand(val, OT_ID, name);
+  Operand *operand = new_operand(val, data_type, OT_ID, name);
+
+  list_append(cfg->operands, operand);
 
   return operand;
+}
+
+void cfg_free(CFG *cfg) {
+  Node *cur = cfg->bbs->root;
+
+  while (cur != NULL) {
+    BasicBlock *bb = cur->data;
+    basic_block_free(bb);
+    cur = cur->next;
+  }
+
+  list_free(cfg->bbs);
+
+  cur = cfg->operands->root;
+  while (cur != NULL) {
+    Operand *operand = cur->data;
+    operand_free(operand);
+    cur = cur->next;
+  }
+  list_free(cfg->operands);
+
+  stack_free(cfg->bb_stack);
+
+  free(cfg);
 }

@@ -33,9 +33,9 @@ void list_append(List *list, void *val) {
   list->end = node;
 }
 
-List *list_free(List *list) {
+void list_free(List *list) {
   if (list == NULL)
-    return NULL;
+    return;
 
   Node *cur = list->root;
   while (cur != NULL) {
@@ -46,5 +46,5 @@ List *list_free(List *list) {
 
   free(list);
 
-  return NULL;
+  return;
 }

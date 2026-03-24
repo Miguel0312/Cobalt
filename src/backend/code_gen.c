@@ -3,6 +3,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#define OPERAND(r) &(r).reg[(r).index]
+
 CodeGenerator *new_code_generator(List *expressions, FILE *f) {
   assert(expressions != NULL);
   assert(f != NULL);
@@ -12,6 +14,33 @@ CodeGenerator *new_code_generator(List *expressions, FILE *f) {
   code_gen->program = expressions;
   code_gen->f = f;
   code_gen->hasError = 0;
+
+  code_gen->A[0].val.reg.name = "%al";
+  code_gen->A[1].val.reg.name = "%ax";
+  code_gen->A[2].val.reg.name = "%eax";
+  code_gen->A[3].val.reg.name = "%rax";
+
+  code_gen->B[0].val.reg.name = "%bl";
+  code_gen->B[1].val.reg.name = "%bx";
+  code_gen->B[2].val.reg.name = "%ebx";
+  code_gen->B[3].val.reg.name = "%rbx";
+
+  code_gen->C[0].val.reg.name = "%cl";
+  code_gen->C[1].val.reg.name = "%cx";
+  code_gen->C[2].val.reg.name = "%ecx";
+  code_gen->C[3].val.reg.name = "%rcx";
+
+  code_gen->D[0].val.reg.name = "%dl";
+  code_gen->D[1].val.reg.name = "%dx";
+  code_gen->D[2].val.reg.name = "%edx";
+  code_gen->D[3].val.reg.name = "%rdx";
+
+  for (int i = 0; i < 4; i++) {
+    code_gen->A[i].sz = code_gen->B[i].sz = code_gen->C[i].sz =
+        code_gen->D[i].sz = (1 << i);
+    code_gen->A[i].type = code_gen->B[i].type = code_gen->C[i].type =
+        code_gen->D[i].type = AO_REGISTER;
+  }
 
   generate_code(code_gen);
 
@@ -72,14 +101,12 @@ void generate_code(CodeGenerator *code_gen) {
 }
 
 void visit_shift(CodeGenerator *code_gen, Expr *expr) {
-  AssemblyOperand ecx;
-  ecx.type = AO_REGISTER, ecx.val.reg = "%ecx";
+  RegRepr ecx = {.index = 2, .reg = code_gen->C};
 
-  AssemblyOperand cl;
-  cl.type = AO_REGISTER, cl.val.reg = "%cl";
+  RegRepr cl = ecx;
+  cl.index -= 2;
 
-  AssemblyOperand scratch;
-  scratch.type = AO_REGISTER, scratch.val.reg = "%eax";
+  RegRepr scratch = {.index = 2, .reg = code_gen->A};
 
   char *instr = (expr->op == LEFT_SHIFT ? "sall" : "sarl");
   Operand *dest = expr->params[0], *lhs = expr->params[1],
@@ -87,22 +114,31 @@ void visit_shift(CodeGenerator *code_gen, Expr *expr) {
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
-  lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
-  rhs_op.type = (rhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+
+  if (lhs_op.type == AO_ADDRESS) {
+    lhs_op.sz = get_var_size(lhs->data_type);
+  }
+  if (rhs_op.type == AO_ADDRESS) {
+    rhs_op.sz = get_var_size(rhs->data_type);
+  }
+  dest_op.sz = get_var_size(dest->data_type);
+
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
   rhs_op.val.operand = rhs;
 
-  mov(code_gen, &rhs_op, &ecx);
-  mov(code_gen, &lhs_op, &scratch);
+  mov(code_gen, &rhs_op, OPERAND(ecx));
+  mov(code_gen, &lhs_op, OPERAND(scratch));
 
   // TODO: make a function to print this from a string and two AssemblyOperands
   fprintf(code_gen->f, "%s ", instr);
-  print_assembly_operand(code_gen, &cl);
+  print_assembly_operand(code_gen, OPERAND(cl));
   fprintf(code_gen->f, ", ");
-  print_assembly_operand(code_gen, &scratch);
+  print_assembly_operand(code_gen, OPERAND(scratch));
   fprintf(code_gen->f, "\n");
 
-  mov(code_gen, &scratch, &dest_op);
+  mov(code_gen, OPERAND(scratch), &dest_op);
 }
 
 void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
@@ -145,53 +181,70 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
-  lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
-  rhs_op.type = (rhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+
+  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
   rhs_op.val.operand = rhs;
 
-  // TODO: save this scratch variable somewhere instead of always instantiating
-  // it
-  AssemblyOperand scratch;
-  scratch.type = AO_REGISTER, scratch.val.reg = "%eax";
+  if (lhs_op.type == AO_ADDRESS) {
+    lhs_op.sz = get_var_size(lhs->data_type);
+  }
+  if (rhs_op.type == AO_ADDRESS) {
+    rhs_op.sz = get_var_size(rhs->data_type);
+  }
+  dest_op.sz = get_var_size(dest->data_type);
 
-  // TODO: when rhs is a constant one of the two moves can be bypassed
-  // Also, when using commutative ADD, MUL, lhs and rhs can be swapped to
-  // achieve this
-  mov(code_gen, &lhs_op, &scratch);
+  RegRepr scratch = {.reg = code_gen->A, .index = 2};
+
+  mov(code_gen, &lhs_op, OPERAND(scratch));
+
+  AssemblyOperand *actual_rhs = &rhs_op;
+
+  if (rhs_op.type == AO_ADDRESS && rhs->data_type == CHAR) {
+    RegRepr scratch2 = {.reg = code_gen->D, .index = 2};
+    mov(code_gen, &rhs_op, OPERAND(scratch2));
+    actual_rhs = OPERAND(scratch2);
+  }
+
   fprintf(code_gen->f, "%s ", instr);
-  print_assembly_operand(code_gen, &rhs_op);
+  print_assembly_operand(code_gen, actual_rhs);
   fprintf(code_gen->f, ", ");
-  print_assembly_operand(code_gen, &scratch);
+  print_assembly_operand(code_gen, OPERAND(scratch));
   fprintf(code_gen->f, "\n");
 
-  mov(code_gen, &scratch, &dest_op);
+  mov(code_gen, OPERAND(scratch), &dest_op);
 }
 
 void visit_div(CodeGenerator *code_gen, Expr *expr) {
-  AssemblyOperand rax;
-  rax.type = AO_REGISTER, rax.val.reg = "%eax";
-  AssemblyOperand rdx;
-  rdx.type = AO_REGISTER, rdx.val.reg = "%edx";
+  RegRepr eax = {.reg = code_gen->A, .index = 2};
+  RegRepr edx = {.reg = code_gen->D, .index = 2};
 
   Operand *dest = expr->params[0], *lhs = expr->params[1],
           *rhs = expr->params[2];
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
-  lhs_op.type = (lhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
-  rhs_op.type = (rhs->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
   rhs_op.val.operand = rhs;
 
-  mov(code_gen, &lhs_op, &rax);
+  if (lhs_op.type == AO_ADDRESS) {
+    lhs_op.sz = get_var_size(lhs->data_type);
+  }
+  if (rhs_op.type == AO_ADDRESS) {
+    rhs_op.sz = get_var_size(rhs->data_type);
+  }
+  dest_op.sz = get_var_size(dest->data_type);
+
+  mov(code_gen, &lhs_op, OPERAND(eax));
   fprintf(code_gen->f, "cdq\n");
 
   if (rhs_op.type == AO_CONST) {
-    AssemblyOperand rcx;
-    rcx.type = AO_REGISTER, rcx.val.reg = "%ecx";
-    mov(code_gen, &rhs_op, &rcx);
-    rhs_op = rcx;
+    RegRepr ecx = {.reg = code_gen->C, .index = 2};
+    mov(code_gen, &rhs_op, OPERAND(ecx));
+    rhs_op = *OPERAND(ecx);
   }
 
   fprintf(code_gen->f, "div ");
@@ -199,9 +252,9 @@ void visit_div(CodeGenerator *code_gen, Expr *expr) {
   fprintf(code_gen->f, "\n");
 
   if (expr->op == DIV) {
-    mov(code_gen, &rax, &dest_op);
+    mov(code_gen, OPERAND(eax), &dest_op);
   } else if (expr->op == MOD) {
-    mov(code_gen, &rdx, &dest_op);
+    mov(code_gen, OPERAND(edx), &dest_op);
   }
 }
 
@@ -214,8 +267,13 @@ void visit_assign(CodeGenerator *code_gen, Expr *expr) {
   op1.type = AO_ADDRESS;
   op1.val.operand = expr->params[0];
 
-  op2.type = (expr->params[1]->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  op2.type = (expr->params[1]->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   op2.val.operand = expr->params[1];
+
+  if (op2.type == AO_ADDRESS) {
+    op2.sz = get_var_size(expr->params[1]->data_type);
+  }
+  op1.sz = get_var_size(expr->params[0]->data_type);
 
   mov(code_gen, &op2, &op1);
 }
@@ -225,12 +283,16 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr) {
   assert(expr != NULL);
   assert(expr->op == RET);
 
-  AssemblyOperand op1, op2;
-  op2.type = AO_REGISTER;
-  op1.val.operand = expr->params[0], op2.val.reg = "%eax";
-  op1.type = (op1.val.operand->type == OT_ID ? AO_ADDRESS : AO_CONST);
+  AssemblyOperand op1;
+  op1.val.operand = expr->params[0];
+  op1.type = (op1.val.operand->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  RegRepr op2 = {.reg = code_gen->A, .index = 2};
 
-  mov(code_gen, &op1, &op2);
+  if (op1.type == AO_ADDRESS) {
+    op1.sz = get_var_size(expr->params[0]->data_type);
+  }
+
+  mov(code_gen, &op1, OPERAND(op2));
   fprintf(code_gen->f, "popq %%rbp\n"
                        "ret\n");
 }
@@ -238,25 +300,59 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr) {
 void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
   // TODO: check that the op types are valid. Can't move from operand to operand
   // for example
-  AssemblyOperand *middle = NULL;
-  AssemblyOperand scratch;
+  AssemblyOperand *middle = NULL, *middle2 = NULL;
   int use_scratch = src->type == AO_ADDRESS && dest->type == AO_ADDRESS;
-  scratch.type = AO_REGISTER, scratch.val.reg = "%eax";
+
+  RegRepr eax = {.reg = code_gen->A, .index = 2};
+  RegRepr al = {.reg = code_gen->A, .index = 0};
+
   if (use_scratch) {
-    middle = &scratch;
+    middle = middle2 = OPERAND((src->sz == 1) ? al : eax);
   } else {
     middle = dest;
   }
 
-  fprintf(code_gen->f, "movl ");
+  char *instr1 = "movl", *instr2 = "movl";
+  if (src->type == AO_CONST) {
+    instr1 = (dest->sz == 4 ? "movl" : "movb");
+  } else if (src->sz == dest->sz) {
+    instr1 = (src->sz == 4 ? "movl" : "movb");
+    if (use_scratch) {
+      instr2 = instr1;
+    }
+  } else if (src->sz == 1 && dest->sz == 4) {
+    instr1 = "movsbl";
+    if (use_scratch) {
+      instr2 = "movl";
+    }
+  } else {
+    if (src->type == AO_ADDRESS) {
+      instr1 = "movl";
+      if (dest->type == AO_ADDRESS) {
+        instr2 = "movb";
+        middle2 = OPERAND(al);
+      } else {
+        AssemblyOperand *reg = code_gen->A + 4 * (dest->val.reg.name[2] - 'a');
+        RegRepr reg_reduc = {.reg = reg, .index = 0};
+        dest = OPERAND(reg_reduc);
+      }
+    } else {
+      instr1 = "movb";
+      AssemblyOperand *reg = code_gen->A + 4 * (src->val.reg.name[2] - 'a');
+      RegRepr reg_reduc = {.reg = reg, .index = 0};
+      src = OPERAND(reg_reduc);
+    }
+  }
+
+  fprintf(code_gen->f, "%s ", instr1);
   print_assembly_operand(code_gen, src);
   fprintf(code_gen->f, ", ");
   print_assembly_operand(code_gen, middle);
   fprintf(code_gen->f, "\n");
 
   if (use_scratch) {
-    fprintf(code_gen->f, "movl ");
-    print_assembly_operand(code_gen, middle);
+    fprintf(code_gen->f, "%s ", instr2);
+    print_assembly_operand(code_gen, middle2);
     fprintf(code_gen->f, ", ");
     print_assembly_operand(code_gen, dest);
     fprintf(code_gen->f, "\n");
@@ -265,7 +361,7 @@ void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
 
 void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand *op) {
   if (op->type == AO_REGISTER) {
-    fprintf(code_gen->f, "%s", op->val.reg);
+    fprintf(code_gen->f, "%s", op->val.reg.name);
     return;
   }
 
@@ -285,11 +381,4 @@ void code_gen_report_error(CodeGenerator *code_gen, char *msg) {
   fprintf(stderr, "%s", msg);
 }
 
-CodeGenerator *code_gen_free(CodeGenerator *code_gen) {
-  if (code_gen == NULL)
-    return NULL;
-
-  free(code_gen);
-
-  return NULL;
-}
+void code_gen_free(CodeGenerator *code_gen) { free(code_gen); }

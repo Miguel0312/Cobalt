@@ -17,6 +17,8 @@ typedef struct Parser {
 
 Parser *new_parser(List *tokens);
 
+void parser_free(Parser *parser);
+
 void parse_program(Parser *parser);
 
 int parser_is_at_end(Parser *parser);
@@ -66,7 +68,5 @@ Operand *add_sub(Parser *parser);
 Operand *mul_div(Parser *parser);
 
 Operand *primary_expr(Parser *parser);
-
-Parser *parser_free(Parser *parser);
 
 #endif // !CO_PARSER_H

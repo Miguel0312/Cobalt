@@ -16,8 +16,8 @@ Node *create_node(void *val);
 
 List *new_list(void);
 
-void list_append(List *list, void *val);
+void list_free(List *list);
 
-List *list_free(List *list);
+void list_append(List *list, void *val);
 
 #endif // !CO_LIST_H
