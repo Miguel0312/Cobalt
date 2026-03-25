@@ -48,7 +48,7 @@ BasicBlock *block(Parser *parser);
 
 Operand *var_decl(Parser *parser);
 
-void if_stmt(Parser *parser);
+BasicBlock *if_stmt(Parser *parser);
 
 Operand *return_stmt(Parser *parser);
 

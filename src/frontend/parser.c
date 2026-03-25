@@ -257,7 +257,7 @@ Operand *var_decl(Parser *parser) {
   return var;
 }
 
-void if_stmt(Parser *parser) {
+BasicBlock *if_stmt(Parser *parser) {
   parser_consume_token(parser, 1, IF);
   parser_consume_token(parser, 1, LEFT_PAREN);
   Operand *cond = expr(parser);
@@ -273,10 +273,16 @@ void if_stmt(Parser *parser) {
   cur_bb->exit_false = false_bb;
 
   if (parser_consume_if(parser, ELSE)) {
-    block(parser);
+    if (parser_get_cur(parser)->type == IF) {
+      cur_bb->exit_false = if_stmt(parser);
+    } else {
+      block(parser);
+    }
     BasicBlock *finally_block = cfg_get_cur_bb(parser->cfg);
     true_bb->exit_true = true_bb->exit_false = finally_block;
   }
+
+  return cur_bb;
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }
