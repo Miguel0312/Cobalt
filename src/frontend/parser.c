@@ -289,7 +289,7 @@ Operand *expr(Parser *parser) { return var_assignment(parser); }
 
 Operand *var_assignment(Parser *parser) {
   if (parser_peek(parser)->type != EQUAL) {
-    return bitwise_or(parser);
+    return logical_or(parser);
   }
 
   if (parser_get_cur(parser)->type != IDENTIFIER) {
@@ -309,6 +309,104 @@ Operand *var_assignment(Parser *parser) {
   Operand *rhs = expr(parser);
 
   parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+
+  return lhs;
+}
+
+Operand *logical_or(Parser *parser) {
+  Operand *lhs = logical_and(parser);
+
+  while (parser_get_cur(parser)->type == L_OR_TOKEN) {
+    parser_advance(parser);
+    BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+    parser_add_expr(parser, TEST, 1, lhs);
+
+    BasicBlock *false_bb = cfg_push_bb(parser->cfg);
+
+    Operand *rhs = logical_and(parser);
+
+    cur_bb->exit_false = false_bb;
+
+    parser_add_expr(parser, TEST, 1, rhs);
+    cfg_pop_bb(parser->cfg);
+    BasicBlock *one_bb = cfg_push_bb(parser->cfg);
+
+    cur_bb->exit_true = false_bb->exit_true = one_bb;
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+
+    OperandVal one_val = {.int_val = 1};
+    Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
+    list_append(parser->cfg->operands, one);
+    parser_add_expr(parser, ASSIGN, 2, res, one);
+
+    cfg_pop_bb(parser->cfg);
+
+    BasicBlock *zero_bb = cfg_push_bb(parser->cfg);
+    false_bb->exit_false = zero_bb;
+    OperandVal zero_val = {.int_val = 0};
+    Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
+    list_append(parser->cfg->operands, zero);
+    parser_add_expr(parser, ASSIGN, 2, res, zero);
+    cfg_pop_bb(parser->cfg);
+
+    BasicBlock *finally_block = cfg_push_bb(parser->cfg);
+    one_bb->exit_false = one_bb->exit_true = finally_block;
+
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *logical_and(Parser *parser) {
+  Operand *lhs = bitwise_or(parser);
+
+  while (parser_get_cur(parser)->type == L_AND_TOKEN) {
+    parser_advance(parser);
+    BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+    parser_add_expr(parser, TEST, 1, lhs);
+
+    BasicBlock *true_bb = cfg_push_bb(parser->cfg);
+
+    Operand *rhs = bitwise_or(parser);
+
+    cur_bb->exit_true = true_bb;
+
+    parser_add_expr(parser, TEST, 1, rhs);
+    cfg_pop_bb(parser->cfg);
+    BasicBlock *zero_bb = cfg_push_bb(parser->cfg);
+
+    cur_bb->exit_false = true_bb->exit_false = zero_bb;
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+
+    OperandVal zero_val = {.int_val = 0};
+    Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
+    list_append(parser->cfg->operands, zero);
+    parser_add_expr(parser, ASSIGN, 2, res, zero);
+
+    cfg_pop_bb(parser->cfg);
+
+    BasicBlock *one_bb = cfg_push_bb(parser->cfg);
+    true_bb->exit_true = one_bb;
+
+    OperandVal one_val = {.int_val = 1};
+    Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
+    list_append(parser->cfg->operands, one);
+    parser_add_expr(parser, ASSIGN, 2, res, one);
+
+    cfg_pop_bb(parser->cfg);
+
+    BasicBlock *finally_block = cfg_push_bb(parser->cfg);
+    zero_bb->exit_false = zero_bb->exit_true = finally_block;
+
+    lhs = res;
+  }
 
   return lhs;
 }
@@ -350,11 +448,11 @@ Operand *bitwise_xor(Parser *parser) {
 }
 
 Operand *bitwise_and(Parser *parser) {
-  Operand *lhs = shift(parser);
+  Operand *lhs = cmp(parser);
 
   while (parser_get_cur(parser)->type == B_AND_TOKEN) {
     parser_advance(parser);
-    Operand *rhs = shift(parser);
+    Operand *rhs = cmp(parser);
 
     DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
@@ -368,14 +466,14 @@ Operand *bitwise_and(Parser *parser) {
   return lhs;
 }
 
-Operand *shift(Parser *parser) {
+Operand *cmp(Parser *parser) {
   Operand *lhs = order(parser);
 
-  while (parser_get_cur(parser)->type == LEFT_SHIFT_TOKEN ||
-         parser_get_cur(parser)->type == RIGHT_SHIFT_TOKEN) {
+  while (parser_get_cur(parser)->type == EQUAL_EQUAL ||
+         parser_get_cur(parser)->type == BANG_EQUAL) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = order(parser);
-    Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
+    Operation op = (tt == EQUAL_EQUAL ? IS_EQUAL : IS_DIF);
 
     DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
@@ -389,13 +487,13 @@ Operand *shift(Parser *parser) {
 }
 
 Operand *order(Parser *parser) {
-  Operand *lhs = cmp(parser);
+  Operand *lhs = shift(parser);
 
   TokenType tt = parser_get_cur(parser)->type;
   while (tt == LESS || tt == LESS_EQUAL || tt == GREATER ||
          tt == GREATER_EQUAL) {
     parser_advance(parser);
-    Operand *rhs = cmp(parser);
+    Operand *rhs = shift(parser);
     Operation op;
     switch (tt) {
     case LESS:
@@ -426,14 +524,14 @@ Operand *order(Parser *parser) {
   return lhs;
 }
 
-Operand *cmp(Parser *parser) {
+Operand *shift(Parser *parser) {
   Operand *lhs = add_sub(parser);
 
-  while (parser_get_cur(parser)->type == EQUAL_EQUAL ||
-         parser_get_cur(parser)->type == BANG_EQUAL) {
+  while (parser_get_cur(parser)->type == LEFT_SHIFT_TOKEN ||
+         parser_get_cur(parser)->type == RIGHT_SHIFT_TOKEN) {
     TokenType tt = parser_advance(parser)->type;
     Operand *rhs = add_sub(parser);
-    Operation op = (tt == EQUAL_EQUAL ? IS_EQUAL : IS_DIF);
+    Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
 
     DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);

@@ -187,10 +187,10 @@ List *scan_tokens(Scanner *scanner) {
       break;
     }
     case '\n': {
-      scanner->line++;
-      continue;
+      break;
     }
     default: {
+      printf("%d %d\n", scanner->start, scanner->cur);
       int found = 0;
       char msg[MSG_BUFFER_SIZE];
       if (isalpha(c) || c == '_') {

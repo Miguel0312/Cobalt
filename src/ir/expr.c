@@ -75,7 +75,9 @@ void print_expr(Expr *expr) {
   case IS_GREATER:
   case IS_GREATER_EQUAL:
   case IS_EQUAL:
-  case IS_DIF: {
+  case IS_DIF:
+  case L_AND:
+  case L_OR: {
     char *op_str = "?";
     switch (expr->op) {
     case ADD: {
@@ -142,6 +144,14 @@ void print_expr(Expr *expr) {
       op_str = ">=";
       break;
     }
+    case L_AND: {
+      op_str = "&&";
+      break;
+    }
+    case L_OR: {
+      op_str = "||";
+      break;
+    }
     default: {
     }
     }
@@ -188,6 +198,10 @@ char *operation_to_string(Operation op) {
     return "B_XOR";
   case B_AND:
     return "B_AND";
+  case L_AND:
+    return "L_AND";
+  case L_OR:
+    return "L_OR";
   case ASSIGN:
     return "ASSIGN";
   case MOD:

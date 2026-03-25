@@ -56,17 +56,21 @@ Operand *expr(Parser *parser);
 
 Operand *var_assignment(Parser *parser);
 
+Operand *logical_or(Parser *parser);
+
+Operand *logical_and(Parser *parser);
+
 Operand *bitwise_or(Parser *parser);
 
 Operand *bitwise_xor(Parser *parser);
 
 Operand *bitwise_and(Parser *parser);
 
-Operand *shift(Parser *parser);
+Operand *cmp(Parser *parser);
 
 Operand *order(Parser *parser);
 
-Operand *cmp(Parser *parser);
+Operand *shift(Parser *parser);
 
 Operand *add_sub(Parser *parser);
 
