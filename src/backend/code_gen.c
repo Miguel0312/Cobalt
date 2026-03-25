@@ -99,6 +99,15 @@ void visit_bb(CodeGenerator *code_gen, BasicBlock *bb) {
       visit_shift(code_gen, expr);
       break;
     }
+    case IS_LESS:
+    case IS_LESS_EQUAL:
+    case IS_GREATER:
+    case IS_GREATER_EQUAL:
+    case IS_EQUAL:
+    case IS_DIF: {
+      visit_cmp(code_gen, expr);
+      break;
+    }
     case TEST: {
       visit_test(code_gen, expr);
       break;
@@ -340,6 +349,68 @@ void visit_test(CodeGenerator *code_gen, Expr *expr) {
   fprintf(code_gen->f, "testl %%eax, %%eax\n");
 }
 
+void visit_cmp(CodeGenerator *code_gen, Expr *expr) {
+  RegRepr eax = {.reg = code_gen->A, .index = 2};
+  RegRepr al = {.reg = code_gen->A, .index = 0};
+
+  Operand *dest = expr->params[0], *lhs = expr->params[1],
+          *rhs = expr->params[2];
+
+  AssemblyOperand dest_op, lhs_op, rhs_op;
+  dest_op.type = AO_ADDRESS;
+  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  dest_op.val.operand = dest, lhs_op.val.operand = lhs,
+  rhs_op.val.operand = rhs;
+
+  if (lhs_op.type == AO_ADDRESS) {
+    lhs_op.sz = get_var_size(lhs->data_type);
+  }
+  if (rhs_op.type == AO_ADDRESS) {
+    rhs_op.sz = get_var_size(rhs->data_type);
+  }
+  dest_op.sz = get_var_size(dest->data_type);
+
+  mov(code_gen, &lhs_op, OPERAND(eax));
+
+  fprintf(code_gen->f, "cmpl ");
+  print_assembly_operand(code_gen, &rhs_op);
+  fprintf(code_gen->f, ", ");
+  print_assembly_operand(code_gen, OPERAND(eax));
+  fprintf(code_gen->f, "\n");
+
+  char *instr;
+  switch (expr->op) {
+  case IS_EQUAL:
+    instr = "sete";
+    break;
+  case IS_DIF:
+    instr = "setne";
+    break;
+  case IS_GREATER:
+    instr = "setg";
+    break;
+  case IS_GREATER_EQUAL:
+    instr = "setge";
+    break;
+  case IS_LESS:
+    instr = "setl";
+    break;
+  case IS_LESS_EQUAL:
+    instr = "setle";
+    break;
+  default:
+    assert(0);
+  }
+
+  fprintf(code_gen->f, "%s ", instr);
+  print_assembly_operand(code_gen, OPERAND(al));
+  fprintf(code_gen->f, "\n");
+
+  mov(code_gen, OPERAND(al), OPERAND(eax));
+  mov(code_gen, OPERAND(eax), &dest_op);
+}
+
 void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
   // TODO: check that the op types are valid. Can't move from operand to
   // operand for example
@@ -364,7 +435,7 @@ void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
       instr2 = instr1;
     }
   } else if (src->sz == 1 && dest->sz == 4) {
-    instr1 = "movsbl";
+    instr1 = (src->type == AO_REGISTER ? "movzbl" : "movsbl");
     if (use_scratch) {
       instr2 = "movl";
     }

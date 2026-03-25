@@ -69,7 +69,13 @@ void print_expr(Expr *expr) {
   case B_AND:
   case B_XOR:
   case LEFT_SHIFT:
-  case RIGHT_SHIFT: {
+  case RIGHT_SHIFT:
+  case IS_LESS:
+  case IS_LESS_EQUAL:
+  case IS_GREATER:
+  case IS_GREATER_EQUAL:
+  case IS_EQUAL:
+  case IS_DIF: {
     char *op_str = "?";
     switch (expr->op) {
     case ADD: {
@@ -110,6 +116,31 @@ void print_expr(Expr *expr) {
     }
     case RIGHT_SHIFT: {
       op_str = ">>";
+      break;
+    }
+    case IS_LESS: {
+      op_str = "<";
+      break;
+    }
+    case IS_LESS_EQUAL: {
+      op_str = "<=";
+      break;
+    }
+    case IS_EQUAL: {
+      op_str = "==";
+      break;
+    }
+    case IS_DIF: {
+      op_str = "!=";
+      break;
+    }
+    case IS_GREATER: {
+      op_str = ">";
+      break;
+    }
+    case IS_GREATER_EQUAL: {
+      op_str = ">=";
+      break;
     }
     default: {
     }
@@ -165,6 +196,18 @@ char *operation_to_string(Operation op) {
     return "LEFT_SHIFT";
   case RIGHT_SHIFT:
     return "RIGHT_SHIFT";
+  case IS_LESS:
+    return "IS_LESS";
+  case IS_LESS_EQUAL:
+    return "IS_LESS_EQUAL";
+  case IS_GREATER:
+    return "IS_GREATER";
+  case IS_GREATER_EQUAL:
+    return "IS_GREATER_EQUAL";
+  case IS_EQUAL:
+    return "IS_EQUAL";
+  case IS_DIF:
+    return "IS_DIF";
   case TEST:
     return "TEST";
   case RET:

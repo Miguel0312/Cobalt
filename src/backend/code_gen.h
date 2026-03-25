@@ -55,6 +55,8 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr);
 
 void visit_test(CodeGenerator *code_gen, Expr *expr);
 
+void visit_cmp(CodeGenerator *code_gen, Expr *expr);
+
 void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dst);
 
 void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand *op);

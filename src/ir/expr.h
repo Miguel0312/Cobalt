@@ -15,6 +15,12 @@ typedef enum Operation {
   ASSIGN,
   MOD,
   TEST,
+  IS_LESS,
+  IS_LESS_EQUAL,
+  IS_GREATER,
+  IS_GREATER_EQUAL,
+  IS_EQUAL,
+  IS_DIF,
   RET
 } Operation;
 

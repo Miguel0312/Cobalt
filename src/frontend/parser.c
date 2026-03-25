@@ -369,13 +369,71 @@ Operand *bitwise_and(Parser *parser) {
 }
 
 Operand *shift(Parser *parser) {
-  Operand *lhs = add_sub(parser);
+  Operand *lhs = order(parser);
 
   while (parser_get_cur(parser)->type == LEFT_SHIFT_TOKEN ||
          parser_get_cur(parser)->type == RIGHT_SHIFT_TOKEN) {
     TokenType tt = parser_advance(parser)->type;
-    Operand *rhs = add_sub(parser);
+    Operand *rhs = order(parser);
     Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    parser_add_expr(parser, op, 3, res, lhs, rhs);
+    lhs = res;
+  }
+
+  return lhs;
+}
+
+Operand *order(Parser *parser) {
+  Operand *lhs = cmp(parser);
+
+  TokenType tt = parser_get_cur(parser)->type;
+  while (tt == LESS || tt == LESS_EQUAL || tt == GREATER ||
+         tt == GREATER_EQUAL) {
+    parser_advance(parser);
+    Operand *rhs = cmp(parser);
+    Operation op;
+    switch (tt) {
+    case LESS:
+      op = IS_LESS;
+      break;
+    case LESS_EQUAL:
+      op = IS_LESS_EQUAL;
+      break;
+    case GREATER:
+      op = IS_GREATER;
+      break;
+    case GREATER_EQUAL:
+      op = IS_GREATER_EQUAL;
+      break;
+    default:
+      assert(0);
+    }
+
+    DataType data_type =
+        get_data_type_from_operands(lhs->data_type, rhs->data_type);
+
+    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    parser_add_expr(parser, op, 3, res, lhs, rhs);
+    lhs = res;
+    tt = parser_get_cur(parser)->type;
+  }
+
+  return lhs;
+}
+
+Operand *cmp(Parser *parser) {
+  Operand *lhs = add_sub(parser);
+
+  while (parser_get_cur(parser)->type == EQUAL_EQUAL ||
+         parser_get_cur(parser)->type == BANG_EQUAL) {
+    TokenType tt = parser_advance(parser)->type;
+    Operand *rhs = add_sub(parser);
+    Operation op = (tt == EQUAL_EQUAL ? IS_EQUAL : IS_DIF);
 
     DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
