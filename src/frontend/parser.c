@@ -43,7 +43,7 @@ void parser_free(Parser *parser) {
 void parse_program(Parser *parser) {
   parser_consume_token(parser, 1, INT_TS);
   parser_assert_token_type(parser, IDENTIFIER);
-  Token *main_token = parser_get_cur(parser);
+  const Token *main_token = parser_get_cur(parser);
   if (strcmp(main_token->lexeme, "main") != 0) {
     parser_report_error(parser, "Expected function to be called main");
   }
@@ -58,17 +58,17 @@ void parse_program(Parser *parser) {
   }
 }
 
-int parser_is_at_end(Parser *parser) {
+int parser_is_at_end(const Parser *parser) {
   assert(parser != NULL);
   return parser_get_cur(parser)->type == EOF_TOKEN;
 }
 
-Token *parser_get_cur(Parser *parser) {
+Token *parser_get_cur(const Parser *parser) {
   assert(parser != NULL);
   return parser->cur_token->data;
 }
 
-Token *parser_peek(Parser *parser) {
+Token *parser_peek(const Parser *parser) {
   if (parser_is_at_end(parser))
     return parser_get_cur(parser);
   return parser->cur_token->next->data;
@@ -104,7 +104,7 @@ void parser_panic(Parser *parser) {
   }
 }
 
-int parser_assert_token_type(Parser *parser, TokenType type) {
+int parser_assert_token_type(Parser *parser, const TokenType type) {
   assert(parser != NULL);
   if (parser_get_cur(parser)->type == type) {
     return 1;
@@ -119,29 +119,29 @@ int parser_assert_token_type(Parser *parser, TokenType type) {
   return 0;
 }
 
-int parser_consume_token(Parser *parser, int n, ...) {
+int parser_consume_token(Parser *parser, const int n, ...) {
   assert(parser != NULL);
   va_list args;
   va_start(args, n);
 
-  TokenType cur_type = parser_get_cur(parser)->type;
+  const TokenType cur_type = parser_get_cur(parser)->type;
   int offset = 0;
   char token_list_str[MSG_BUFFER_SIZE];
 
   for (int i = 0; i < n; i++) {
-    TokenType type = va_arg(args, TokenType);
+    const TokenType type = va_arg(args, TokenType);
     if (type == cur_type) {
       va_end(args);
       parser_advance(parser);
       return 0;
+    }
+
+    if (i == 0) {
+      offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
+                         "%s", token_type_to_string(type));
     } else {
-      if (i == 0) {
-        offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
-                           "%s", token_type_to_string(type));
-      } else {
-        offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
-                           ", %s", token_type_to_string(type));
-      }
+      offset += snprintf(token_list_str + offset, MSG_BUFFER_SIZE - offset,
+                         ", %s", token_type_to_string(type));
     }
   }
 
@@ -151,10 +151,10 @@ int parser_consume_token(Parser *parser, int n, ...) {
   snprintf(msg, MSG_BUFFER_SIZE - offset, "Token %s not in %s",
            token_type_to_string(cur_type), token_list_str);
 
-  return 0;
+  return 1;
 }
 
-int parser_consume_if(Parser *parser, TokenType type) {
+int parser_consume_if(Parser *parser, const TokenType type) {
   assert(parser != NULL);
   if (parser_get_cur(parser)->type == type) {
     parser_advance(parser);
@@ -164,7 +164,7 @@ int parser_consume_if(Parser *parser, TokenType type) {
   return 0;
 }
 
-int parser_consume_if_not(Parser *parser, TokenType type) {
+int parser_consume_if_not(Parser *parser, const TokenType type) {
   assert(parser != NULL);
   if (parser_get_cur(parser)->type != type) {
     parser_advance(parser);
@@ -174,13 +174,14 @@ int parser_consume_if_not(Parser *parser, TokenType type) {
   return 0;
 }
 
-void parser_add_expr(Parser *parser, Operation op, int n, ...) {
+void parser_add_expr(const Parser *parser, const Operation op, const int n, ...) {
   va_list args;
   va_start(args, n);
   list_append(cfg_get_cur_bb(parser->cfg)->expressions,
               new_expr_v(op, n, args));
   va_end(args);
 }
+
 BasicBlock *block(Parser *parser) {
   parser_consume_token(parser, 1, LEFT_BRACE);
   BasicBlock *bb = cfg_push_bb(parser->cfg);
@@ -190,25 +191,25 @@ BasicBlock *block(Parser *parser) {
   while (!parser_is_at_end(parser) &&
          (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
     switch (cur_type) {
-    case INT_TS:
-    case CHAR_TS:
-      var_decl(parser);
-      break;
-    case RETURN:
-      return_stmt(parser);
-      break;
-    case IDENTIFIER:
-      expr(parser);
-      parser_consume_token(parser, 1, SEMICOLON);
-      break;
-    case LEFT_BRACE:
-      block(parser);
-      break;
-    case IF:
-      if_stmt(parser);
-      break;
-    default:
-      parser_report_error(parser, "Unexpected token");
+      case INT_TS:
+      case CHAR_TS:
+        var_decl(parser);
+        break;
+      case RETURN:
+        return_stmt(parser);
+        break;
+      case IDENTIFIER:
+        expr(parser);
+        parser_consume_token(parser, 1, SEMICOLON);
+        break;
+      case LEFT_BRACE:
+        block(parser);
+        break;
+      case IF:
+        if_stmt(parser);
+        break;
+      default:
+        parser_report_error(parser, "Unexpected token");
     }
   }
 
@@ -225,11 +226,12 @@ BasicBlock *block(Parser *parser) {
 
   return bb;
 }
+
 Operand *var_decl(Parser *parser) {
-  DataType data_type = (parser_get_cur(parser)->type == INT_TS ? INT : CHAR);
+  const DataType data_type = (parser_get_cur(parser)->type == INT_TS ? INT : CHAR);
   parser_consume_token(parser, 2, INT_TS, CHAR_TS);
   parser_assert_token_type(parser, IDENTIFIER);
-  Token *token = parser_advance(parser);
+  const Token *token = parser_advance(parser);
   if (cfg_has_var_in_scope(parser->cfg, token->lexeme)) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
@@ -295,7 +297,7 @@ Operand *var_assignment(Parser *parser) {
   if (parser_get_cur(parser)->type != IDENTIFIER) {
     parser_report_error(parser, "Expression is not assignable");
   }
-  Token *token = parser_advance(parser);
+  const Token *token = parser_advance(parser);
   Operand *lhs = cfg_get_var(parser->cfg, token->lexeme);
   if (lhs == NULL) {
     char msg[MSG_BUFFER_SIZE];
@@ -315,6 +317,8 @@ Operand *var_assignment(Parser *parser) {
 
 Operand *logical_or(Parser *parser) {
   Operand *lhs = logical_and(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == L_OR_TOKEN) {
     parser_advance(parser);
@@ -333,11 +337,11 @@ Operand *logical_or(Parser *parser) {
 
     cur_bb->exit_true = false_bb->exit_true = one_bb;
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
 
-    OperandVal one_val = {.int_val = 1};
+    const OperandVal one_val = {.int_val = 1};
     Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
     list_append(parser->cfg->operands, one);
     parser_add_expr(parser, ASSIGN, 2, res, one);
@@ -346,7 +350,7 @@ Operand *logical_or(Parser *parser) {
 
     BasicBlock *zero_bb = cfg_push_bb(parser->cfg);
     false_bb->exit_false = zero_bb;
-    OperandVal zero_val = {.int_val = 0};
+    const OperandVal zero_val = {.int_val = 0};
     Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
     list_append(parser->cfg->operands, zero);
     parser_add_expr(parser, ASSIGN, 2, res, zero);
@@ -363,6 +367,8 @@ Operand *logical_or(Parser *parser) {
 
 Operand *logical_and(Parser *parser) {
   Operand *lhs = bitwise_or(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == L_AND_TOKEN) {
     parser_advance(parser);
@@ -381,11 +387,11 @@ Operand *logical_and(Parser *parser) {
 
     cur_bb->exit_false = true_bb->exit_false = zero_bb;
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
 
-    OperandVal zero_val = {.int_val = 0};
+    const OperandVal zero_val = {.int_val = 0};
     Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
     list_append(parser->cfg->operands, zero);
     parser_add_expr(parser, ASSIGN, 2, res, zero);
@@ -395,7 +401,7 @@ Operand *logical_and(Parser *parser) {
     BasicBlock *one_bb = cfg_push_bb(parser->cfg);
     true_bb->exit_true = one_bb;
 
-    OperandVal one_val = {.int_val = 1};
+    const OperandVal one_val = {.int_val = 1};
     Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
     list_append(parser->cfg->operands, one);
     parser_add_expr(parser, ASSIGN, 2, res, one);
@@ -413,12 +419,14 @@ Operand *logical_and(Parser *parser) {
 
 Operand *bitwise_or(Parser *parser) {
   Operand *lhs = bitwise_xor(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == B_OR_TOKEN) {
     parser_advance(parser);
     Operand *rhs = bitwise_xor(parser);
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -431,12 +439,14 @@ Operand *bitwise_or(Parser *parser) {
 
 Operand *bitwise_xor(Parser *parser) {
   Operand *lhs = bitwise_and(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == B_XOR_TOKEN) {
     parser_advance(parser);
     Operand *rhs = bitwise_and(parser);
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -449,12 +459,14 @@ Operand *bitwise_xor(Parser *parser) {
 
 Operand *bitwise_and(Parser *parser) {
   Operand *lhs = cmp(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == B_AND_TOKEN) {
     parser_advance(parser);
     Operand *rhs = cmp(parser);
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -468,14 +480,16 @@ Operand *bitwise_and(Parser *parser) {
 
 Operand *cmp(Parser *parser) {
   Operand *lhs = order(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == EQUAL_EQUAL ||
          parser_get_cur(parser)->type == BANG_EQUAL) {
-    TokenType tt = parser_advance(parser)->type;
+    const TokenType tt = parser_advance(parser)->type;
     Operand *rhs = order(parser);
-    Operation op = (tt == EQUAL_EQUAL ? IS_EQUAL : IS_DIF);
+    const Operation op = (tt == EQUAL_EQUAL ? IS_EQUAL : IS_DIF);
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -488,6 +502,8 @@ Operand *cmp(Parser *parser) {
 
 Operand *order(Parser *parser) {
   Operand *lhs = shift(parser);
+  if (lhs == NULL)
+    return NULL;
 
   TokenType tt = parser_get_cur(parser)->type;
   while (tt == LESS || tt == LESS_EQUAL || tt == GREATER ||
@@ -496,23 +512,23 @@ Operand *order(Parser *parser) {
     Operand *rhs = shift(parser);
     Operation op;
     switch (tt) {
-    case LESS:
-      op = IS_LESS;
-      break;
-    case LESS_EQUAL:
-      op = IS_LESS_EQUAL;
-      break;
-    case GREATER:
-      op = IS_GREATER;
-      break;
-    case GREATER_EQUAL:
-      op = IS_GREATER_EQUAL;
-      break;
-    default:
-      assert(0);
+      case LESS:
+        op = IS_LESS;
+        break;
+      case LESS_EQUAL:
+        op = IS_LESS_EQUAL;
+        break;
+      case GREATER:
+        op = IS_GREATER;
+        break;
+      case GREATER_EQUAL:
+        op = IS_GREATER_EQUAL;
+        break;
+      default:
+        assert(0);
     }
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -526,14 +542,17 @@ Operand *order(Parser *parser) {
 
 Operand *shift(Parser *parser) {
   Operand *lhs = add_sub(parser);
+  if (lhs == NULL) {
+    return NULL;
+  }
 
   while (parser_get_cur(parser)->type == LEFT_SHIFT_TOKEN ||
          parser_get_cur(parser)->type == RIGHT_SHIFT_TOKEN) {
-    TokenType tt = parser_advance(parser)->type;
-    Operand *rhs = add_sub(parser);
-    Operation op = (tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT);
+    const TokenType tt = parser_advance(parser)->type;
+    const Operand *rhs = add_sub(parser);
+    const Operation op = tt == LEFT_SHIFT_TOKEN ? LEFT_SHIFT : RIGHT_SHIFT;
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -546,14 +565,16 @@ Operand *shift(Parser *parser) {
 
 Operand *add_sub(Parser *parser) {
   Operand *lhs = mul_div(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == PLUS ||
          parser_get_cur(parser)->type == MINUS) {
-    TokenType tt = parser_advance(parser)->type;
-    Operand *rhs = mul_div(parser);
-    Operation op = (tt == PLUS ? ADD : SUB);
+    const TokenType tt = parser_advance(parser)->type;
+    const Operand *rhs = mul_div(parser);
+    const Operation op = (tt == PLUS ? ADD : SUB);
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -566,29 +587,31 @@ Operand *add_sub(Parser *parser) {
 
 Operand *mul_div(Parser *parser) {
   Operand *lhs = primary_expr(parser);
+  if (lhs == NULL)
+    return NULL;
 
   while (parser_get_cur(parser)->type == STAR ||
          parser_get_cur(parser)->type == SLASH ||
          parser_get_cur(parser)->type == PERCENT) {
-    TokenType tt = parser_advance(parser)->type;
+    const TokenType tt = parser_advance(parser)->type;
     Operand *rhs = primary_expr(parser);
     Operation op;
     switch (tt) {
-    case STAR:
-      op = MUL;
-      break;
-    case SLASH:
-      op = DIV;
-      break;
-    case PERCENT:
-      op = MOD;
-      break;
-    default:
-      parser_report_error(parser, "Unexpected token in mul_div");
-      return NULL;
+      case STAR:
+        op = MUL;
+        break;
+      case SLASH:
+        op = DIV;
+        break;
+      case PERCENT:
+        op = MOD;
+        break;
+      default:
+        parser_report_error(parser, "Unexpected token in mul_div");
+        return NULL;
     }
 
-    DataType data_type =
+    const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
     Operand *res = cfg_add_tmp(parser->cfg, data_type);
@@ -600,15 +623,15 @@ Operand *mul_div(Parser *parser) {
 }
 
 Operand *primary_expr(Parser *parser) {
-  Token *token = parser_advance(parser);
+  const Token *token = parser_advance(parser);
 
   Operand *operand;
   if (token->type == INT_LITERAL) {
-    OperandVal val = {.int_val = atoi(token->lexeme)};
+    const OperandVal val = {.int_val = (int) strtol(token->lexeme, NULL, 10)};
     operand = new_operand(val, INT, OT_INT, NULL);
     list_append(parser->cfg->operands, operand);
   } else if (token->type == CHAR_LITERAL) {
-    OperandVal val = {.int_val = char_literal_value(parser, token->lexeme)};
+    const OperandVal val = {.int_val = char_literal_value(parser, token->lexeme)};
     operand = new_operand(val, CHAR, OT_CHAR, NULL);
     list_append(parser->cfg->operands, operand);
   } else if (token->type == IDENTIFIER) {
@@ -629,7 +652,7 @@ Operand *primary_expr(Parser *parser) {
   }
 
   if (parser_consume_if(parser, EQUAL)) {
-    if (operand->op_type != OT_ID) {
+    if (operand != NULL && operand->op_type != OT_ID) {
       parser_report_error(parser, "Expression is not assignable");
       return operand;
     }
@@ -653,32 +676,34 @@ Operand *return_stmt(Parser *parser) {
   return NULL;
 }
 
-int char_literal_value(Parser *parser, char *lexeme) {
+int char_literal_value(Parser *parser, const char *lexeme) {
   if (lexeme[1] != '\\') {
     return lexeme[1];
   }
 
   switch (lexeme[2]) {
-  case '0':
-    return 0;
-  case 'a':
-    return 7;
-  case 'b':
-    return 8;
-  case 't':
-    return 9;
-  case 'n':
-    return 10;
-  case 'v':
-    return 11;
-  case 'f':
-    return 12;
-  case 'r':
-    return 13;
-  // Single Quote and anti slash
-  case 39:
-  case 92:
-    return lexeme[2];
+    case '0':
+      return 0;
+    case 'a':
+      return 7;
+    case 'b':
+      return 8;
+    case 't':
+      return 9;
+    case 'n':
+      return 10;
+    case 'v':
+      return 11;
+    case 'f':
+      return 12;
+    case 'r':
+      return 13;
+    // Single Quote and anti slash
+    case 39:
+    case 92:
+      return lexeme[2];
+    default:
+      break;
   }
 
   parser_report_error(parser, "Char literal has invalid escape sequence");

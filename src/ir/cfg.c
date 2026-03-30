@@ -1,6 +1,5 @@
 #include "cfg.h"
 
-#include <assert.h>
 #include <stdlib.h>
 
 #include "ir/basic_block.h"
@@ -20,7 +19,7 @@ CFG *new_cfg(void) {
   return cfg;
 }
 
-BasicBlock *cfg_push_bb(CFG *cfg) {
+BasicBlock *cfg_push_bb(const CFG *cfg) {
   char *label = malloc(8);
   snprintf(label, 8, ".BB%d", bb_cnt++);
 
@@ -32,30 +31,28 @@ BasicBlock *cfg_push_bb(CFG *cfg) {
   return bb;
 }
 
-BasicBlock *cfg_pop_bb(CFG *cfg) {
+BasicBlock *cfg_pop_bb(const CFG *cfg) {
   // TODO: needs to find a difference between a block that is actually popped
   // and when an if causes the creation of two blocks cfg->offset -=
 
-  // cfg_get_cur_bb(cfg)->stack_space;
   return stack_pop(cfg->bb_stack);
 }
 
-void cfg_push_symbol_table(CFG *cfg) {
+void cfg_push_symbol_table(const CFG *cfg) {
   HashMap *symbol_table = new_hash_map(string_hash, string_cmp);
 
   stack_push(cfg->symbol_table, symbol_table);
 }
 
-void cfg_pop_symbol_table(CFG *cfg) {
+void cfg_pop_symbol_table(const CFG *cfg) {
   // TODO: extract symbol table into a struct, keep track of the stack space
   // occupied by the operands in it and free it here
 
-  // cfg_get_cur_bb(cfg)->stack_space;
   hash_map_free(stack_pop(cfg->symbol_table));
 }
 
-Operand *cfg_get_var(CFG *cfg, char *name) {
-  Node *cur = cfg->symbol_table->elements->end;
+Operand *cfg_get_var(const CFG *cfg, char *name) {
+  const Node *cur = cfg->symbol_table->elements->end;
 
   while (cur != NULL) {
     Operand *res = hash_map_get(cur->data, name);
@@ -68,22 +65,22 @@ Operand *cfg_get_var(CFG *cfg, char *name) {
   return NULL;
 }
 
-int cfg_has_var_in_scope(CFG *cfg, char *name) {
-  Node *cur = cfg->symbol_table->elements->end;
+int cfg_has_var_in_scope(const CFG *cfg, char *name) {
+  const Node *cur = cfg->symbol_table->elements->end;
   return hash_map_get(cur->data, name) != NULL;
 }
 
-Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
+Operand *cfg_add_var(CFG *cfg, const DataType data_type, const OperandType op_type,
                      char *name) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
 
-  int delta = get_var_size(data_type);
+  const int delta = get_var_size(data_type);
 
   cfg->offset += delta;
   bb->stack_space += delta;
 
-  unsigned long address = cfg->offset;
-  OperandVal val = {.address = address};
+  const unsigned long address = cfg->offset;
+  const OperandVal val = {.address = address};
   Operand *operand = new_operand(val, data_type, op_type, name);
 
   list_append(cfg->operands, operand);
@@ -93,16 +90,16 @@ Operand *cfg_add_var(CFG *cfg, DataType data_type, OperandType op_type,
   return operand;
 }
 
-Operand *cfg_add_tmp(CFG *cfg, DataType data_type) {
+Operand *cfg_add_tmp(CFG *cfg, const DataType data_type) {
   BasicBlock *bb = cfg_get_cur_bb(cfg);
 
-  int delta = get_var_size(data_type);
+  const int delta = get_var_size(data_type);
 
   cfg->offset += delta;
   bb->stack_space += delta;
 
-  unsigned long address = cfg->offset;
-  OperandVal val = {.address = address};
+  const unsigned long address = cfg->offset;
+  const OperandVal val = {.address = address};
   char *name = malloc(10);
 
   snprintf(name, 10, "!%lu", cfg->offset);
@@ -115,7 +112,7 @@ Operand *cfg_add_tmp(CFG *cfg, DataType data_type) {
 }
 
 void cfg_free(CFG *cfg) {
-  Node *cur = cfg->bbs->root;
+  const Node *cur = cfg->bbs->root;
 
   while (cur != NULL) {
     BasicBlock *bb = cur->data;

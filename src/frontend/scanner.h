@@ -29,7 +29,7 @@ void scanner_add_token(Scanner *scanner, TokenType type);
 
 void scanner_advance(Scanner *scanner);
 
-char scanner_peek(Scanner *scanner);
+char scanner_peek(const Scanner *scanner);
 
 void scanner_report_error(Scanner *scanner, char *msg);
 
@@ -39,6 +39,6 @@ int read_number(Scanner *scanner, char *error_msg);
 
 int read_char(Scanner *scanner);
 
-TokenType get_keyword(Scanner *scanner);
+TokenType get_keyword(const Scanner *scanner);
 
 #endif // !CO_SCANNER_H

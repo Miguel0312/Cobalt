@@ -37,9 +37,9 @@ CodeGenerator *new_code_generator(CFG *cfg, FILE *f) {
 
   for (int i = 0; i < 4; i++) {
     code_gen->A[i].sz = code_gen->B[i].sz = code_gen->C[i].sz =
-        code_gen->D[i].sz = (1 << i);
+                                            code_gen->D[i].sz = (1 << i);
     code_gen->A[i].type = code_gen->B[i].type = code_gen->C[i].type =
-        code_gen->D[i].type = AO_REGISTER;
+                                                code_gen->D[i].type = AO_REGISTER;
   }
 
   generate_code(code_gen);
@@ -51,73 +51,73 @@ void generate_code(CodeGenerator *code_gen) {
   assert(code_gen != NULL);
 
   fprintf(code_gen->f, ".text\n"
-                       ".globl main\n"
-                       "main:\n"
-                       "pushq %%rbp\n"
-                       "movq %%rsp, %%rbp\n");
+          ".globl main\n"
+          "main:\n"
+          "pushq %%rbp\n"
+          "movq %%rsp, %%rbp\n");
 
-  Node *cur = code_gen->cfg->bbs->root;
+  const Node *cur = code_gen->cfg->bbs->root;
   while (cur != NULL) {
     visit_bb(code_gen, cur->data);
     cur = cur->next;
   }
 }
 
-void visit_bb(CodeGenerator *code_gen, BasicBlock *bb) {
-  Node *cur = bb->expressions->root;
+void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
+  const Node *cur = bb->expressions->root;
 
   fprintf(code_gen->f, "%s:\n", bb->label);
 
   while (cur != NULL) {
-    Expr *expr = cur->data;
+    const Expr *expr = cur->data;
 
     switch (expr->op) {
-    case RET: {
-      visit_ret(code_gen, expr);
-      break;
-    }
-    case ASSIGN: {
-      visit_assign(code_gen, expr);
-      break;
-    }
-    case ADD:
-    case SUB:
-    case MUL:
-    case B_OR:
-    case B_AND:
-    case B_XOR: {
-      visit_binary_op(code_gen, expr);
-      break;
-    }
-    case DIV:
-    case MOD: {
-      visit_div(code_gen, expr);
-      break;
-    }
-    case LEFT_SHIFT:
-    case RIGHT_SHIFT: {
-      visit_shift(code_gen, expr);
-      break;
-    }
-    case IS_LESS:
-    case IS_LESS_EQUAL:
-    case IS_GREATER:
-    case IS_GREATER_EQUAL:
-    case IS_EQUAL:
-    case IS_DIF: {
-      visit_cmp(code_gen, expr);
-      break;
-    }
-    case TEST: {
-      visit_test(code_gen, expr);
-      break;
-    }
-    default: {
-      char msg[MSG_BUFFER_SIZE];
-      snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
-               operation_to_string(expr->op));
-      code_gen_report_error(code_gen, msg);
-    }
+      case RET: {
+        visit_ret(code_gen, expr);
+        break;
+      }
+      case ASSIGN: {
+        visit_assign(code_gen, expr);
+        break;
+      }
+      case ADD:
+      case SUB:
+      case MUL:
+      case B_OR:
+      case B_AND:
+      case B_XOR: {
+        visit_binary_op(code_gen, expr);
+        break;
+      }
+      case DIV:
+      case MOD: {
+        visit_div(code_gen, expr);
+        break;
+      }
+      case LEFT_SHIFT:
+      case RIGHT_SHIFT: {
+        visit_shift(code_gen, expr);
+        break;
+      }
+      case IS_LESS:
+      case IS_LESS_EQUAL:
+      case IS_GREATER:
+      case IS_GREATER_EQUAL:
+      case IS_EQUAL:
+      case IS_DIF: {
+        visit_cmp(code_gen, expr);
+        break;
+      }
+      case TEST: {
+        visit_test(code_gen, expr);
+        break;
+      }
+      default: {
+        char msg[MSG_BUFFER_SIZE];
+        snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
+                 operation_to_string(expr->op));
+        code_gen_report_error(code_gen, msg);
+      }
     }
 
     cur = cur->next;
@@ -136,22 +136,22 @@ void visit_bb(CodeGenerator *code_gen, BasicBlock *bb) {
   }
 }
 
-void visit_shift(CodeGenerator *code_gen, Expr *expr) {
-  RegRepr ecx = {.index = 2, .reg = code_gen->C};
+void visit_shift(CodeGenerator *code_gen, const Expr *expr) {
+  const RegRepr ecx = {.index = 2, .reg = code_gen->C};
 
   RegRepr cl = ecx;
   cl.index -= 2;
 
-  RegRepr scratch = {.index = 2, .reg = code_gen->A};
+  const RegRepr scratch = {.index = 2, .reg = code_gen->A};
 
-  char *instr = (expr->op == LEFT_SHIFT ? "sall" : "sarl");
+  char *instr = expr->op == LEFT_SHIFT ? "sall" : "sarl";
   Operand *dest = expr->params[0], *lhs = expr->params[1],
-          *rhs = expr->params[2];
+      *rhs = expr->params[2];
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
-  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
-  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  lhs_op.type = lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
+  rhs_op.type = rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
 
   if (lhs_op.type == AO_ADDRESS) {
     lhs_op.sz = get_var_size(lhs->data_type);
@@ -162,7 +162,7 @@ void visit_shift(CodeGenerator *code_gen, Expr *expr) {
   dest_op.sz = get_var_size(dest->data_type);
 
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
-  rhs_op.val.operand = rhs;
+      rhs_op.val.operand = rhs;
 
   mov(code_gen, &rhs_op, OPERAND(ecx));
   mov(code_gen, &lhs_op, OPERAND(scratch));
@@ -178,43 +178,43 @@ void visit_shift(CodeGenerator *code_gen, Expr *expr) {
   mov(code_gen, OPERAND(scratch), &dest_op);
 }
 
-void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
+void visit_binary_op(CodeGenerator *code_gen, const Expr *expr) {
   char *instr = "";
   switch (expr->op) {
-  case ADD: {
-    instr = "add";
-    break;
-  }
-  case SUB: {
-    instr = "sub";
-    break;
-  }
-  case MUL: {
-    instr = "imul";
-    break;
-  }
-  case B_AND: {
-    instr = "and";
-    break;
-  }
-  case B_OR: {
-    instr = "or";
-    break;
-  }
-  case B_XOR: {
-    instr = "xor";
-    break;
-  }
-  default: {
-    char msg[MSG_BUFFER_SIZE];
-    snprintf(msg, MSG_BUFFER_SIZE, "Given operation %s is not binary",
-             operation_to_string(expr->op));
-    code_gen_report_error(code_gen, msg);
-  }
+    case ADD: {
+      instr = "add";
+      break;
+    }
+    case SUB: {
+      instr = "sub";
+      break;
+    }
+    case MUL: {
+      instr = "imul";
+      break;
+    }
+    case B_AND: {
+      instr = "and";
+      break;
+    }
+    case B_OR: {
+      instr = "or";
+      break;
+    }
+    case B_XOR: {
+      instr = "xor";
+      break;
+    }
+    default: {
+      char msg[MSG_BUFFER_SIZE];
+      snprintf(msg, MSG_BUFFER_SIZE, "Given operation %s is not binary",
+               operation_to_string(expr->op));
+      code_gen_report_error(code_gen, msg);
+    }
   }
 
   Operand *dest = expr->params[0], *lhs = expr->params[1],
-          *rhs = expr->params[2];
+      *rhs = expr->params[2];
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
@@ -222,7 +222,7 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
-  rhs_op.val.operand = rhs;
+      rhs_op.val.operand = rhs;
 
   if (lhs_op.type == AO_ADDRESS) {
     lhs_op.sz = get_var_size(lhs->data_type);
@@ -232,14 +232,14 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   }
   dest_op.sz = get_var_size(dest->data_type);
 
-  RegRepr scratch = {.reg = code_gen->A, .index = 2};
+  const RegRepr scratch = {.reg = code_gen->A, .index = 2};
 
   mov(code_gen, &lhs_op, OPERAND(scratch));
 
-  AssemblyOperand *actual_rhs = &rhs_op;
+  const AssemblyOperand *actual_rhs = &rhs_op;
 
   if (rhs_op.type == AO_ADDRESS && rhs->data_type == CHAR) {
-    RegRepr scratch2 = {.reg = code_gen->D, .index = 2};
+    const RegRepr scratch2 = {.reg = code_gen->D, .index = 2};
     mov(code_gen, &rhs_op, OPERAND(scratch2));
     actual_rhs = OPERAND(scratch2);
   }
@@ -253,19 +253,19 @@ void visit_binary_op(CodeGenerator *code_gen, Expr *expr) {
   mov(code_gen, OPERAND(scratch), &dest_op);
 }
 
-void visit_div(CodeGenerator *code_gen, Expr *expr) {
-  RegRepr eax = {.reg = code_gen->A, .index = 2};
-  RegRepr edx = {.reg = code_gen->D, .index = 2};
+void visit_div(CodeGenerator *code_gen, const Expr *expr) {
+  const RegRepr eax = {.reg = code_gen->A, .index = 2};
+  const RegRepr edx = {.reg = code_gen->D, .index = 2};
 
   Operand *dest = expr->params[0], *lhs = expr->params[1],
-          *rhs = expr->params[2];
+      *rhs = expr->params[2];
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
-  lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
-  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  lhs_op.type = lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
+  rhs_op.type = rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
-  rhs_op.val.operand = rhs;
+      rhs_op.val.operand = rhs;
 
   if (lhs_op.type == AO_ADDRESS) {
     lhs_op.sz = get_var_size(lhs->data_type);
@@ -279,9 +279,9 @@ void visit_div(CodeGenerator *code_gen, Expr *expr) {
   fprintf(code_gen->f, "cdq\n");
 
   if (rhs_op.type == AO_CONST) {
-    RegRepr ecx = {.reg = code_gen->C, .index = 2};
+    const RegRepr ecx = {.reg = code_gen->C, .index = 2};
     mov(code_gen, &rhs_op, OPERAND(ecx));
-    rhs_op = *OPERAND(ecx);
+    rhs_op = ecx.reg[ecx.index];
   }
 
   fprintf(code_gen->f, "div ");
@@ -295,7 +295,7 @@ void visit_div(CodeGenerator *code_gen, Expr *expr) {
   }
 }
 
-void visit_assign(CodeGenerator *code_gen, Expr *expr) {
+void visit_assign(CodeGenerator *code_gen, const Expr *expr) {
   assert(code_gen != NULL);
   assert(expr != NULL);
   assert(expr->op == ASSIGN);
@@ -304,7 +304,7 @@ void visit_assign(CodeGenerator *code_gen, Expr *expr) {
   op1.type = AO_ADDRESS;
   op1.val.operand = expr->params[0];
 
-  op2.type = (expr->params[1]->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  op2.type = expr->params[1]->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
   op2.val.operand = expr->params[1];
 
   if (op2.type == AO_ADDRESS) {
@@ -315,7 +315,7 @@ void visit_assign(CodeGenerator *code_gen, Expr *expr) {
   mov(code_gen, &op2, &op1);
 }
 
-void visit_ret(CodeGenerator *code_gen, Expr *expr) {
+void visit_ret(CodeGenerator *code_gen, const Expr *expr) {
   assert(code_gen != NULL);
   assert(expr != NULL);
   assert(expr->op == RET);
@@ -323,7 +323,7 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr) {
   AssemblyOperand op1;
   op1.val.operand = expr->params[0];
   op1.type = (op1.val.operand->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
-  RegRepr op2 = {.reg = code_gen->A, .index = 2};
+  const RegRepr op2 = {.reg = code_gen->A, .index = 2};
 
   if (op1.type == AO_ADDRESS) {
     op1.sz = get_var_size(expr->params[0]->data_type);
@@ -331,15 +331,15 @@ void visit_ret(CodeGenerator *code_gen, Expr *expr) {
 
   mov(code_gen, &op1, OPERAND(op2));
   fprintf(code_gen->f, "popq %%rbp\n"
-                       "ret\n");
+          "ret\n");
 }
 
-void visit_test(CodeGenerator *code_gen, Expr *expr) {
-  RegRepr eax = {.reg = code_gen->A, .index = 2};
+void visit_test(CodeGenerator *code_gen, const Expr *expr) {
+  const RegRepr eax = {.reg = code_gen->A, .index = 2};
 
   AssemblyOperand op1;
   op1.val.operand = expr->params[0];
-  op1.type = (op1.val.operand->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  op1.type = op1.val.operand->op_type == OT_ID ? AO_ADDRESS : AO_CONST;
   if (op1.type == AO_ADDRESS) {
     op1.sz = get_var_size(expr->params[0]->data_type);
   }
@@ -349,19 +349,19 @@ void visit_test(CodeGenerator *code_gen, Expr *expr) {
   fprintf(code_gen->f, "testl %%eax, %%eax\n");
 }
 
-void visit_cmp(CodeGenerator *code_gen, Expr *expr) {
-  RegRepr eax = {.reg = code_gen->A, .index = 2};
-  RegRepr al = {.reg = code_gen->A, .index = 0};
+void visit_cmp(CodeGenerator *code_gen, const Expr *expr) {
+  const RegRepr eax = {.reg = code_gen->A, .index = 2};
+  const RegRepr al = {.reg = code_gen->A, .index = 0};
 
   Operand *dest = expr->params[0], *lhs = expr->params[1],
-          *rhs = expr->params[2];
+      *rhs = expr->params[2];
 
   AssemblyOperand dest_op, lhs_op, rhs_op;
   dest_op.type = AO_ADDRESS;
   lhs_op.type = (lhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
   dest_op.val.operand = dest, lhs_op.val.operand = lhs,
-  rhs_op.val.operand = rhs;
+      rhs_op.val.operand = rhs;
 
   if (lhs_op.type == AO_ADDRESS) {
     lhs_op.sz = get_var_size(lhs->data_type);
@@ -381,26 +381,26 @@ void visit_cmp(CodeGenerator *code_gen, Expr *expr) {
 
   char *instr;
   switch (expr->op) {
-  case IS_EQUAL:
-    instr = "sete";
-    break;
-  case IS_DIF:
-    instr = "setne";
-    break;
-  case IS_GREATER:
-    instr = "setg";
-    break;
-  case IS_GREATER_EQUAL:
-    instr = "setge";
-    break;
-  case IS_LESS:
-    instr = "setl";
-    break;
-  case IS_LESS_EQUAL:
-    instr = "setle";
-    break;
-  default:
-    assert(0);
+    case IS_EQUAL:
+      instr = "sete";
+      break;
+    case IS_DIF:
+      instr = "setne";
+      break;
+    case IS_GREATER:
+      instr = "setg";
+      break;
+    case IS_GREATER_EQUAL:
+      instr = "setge";
+      break;
+    case IS_LESS:
+      instr = "setl";
+      break;
+    case IS_LESS_EQUAL:
+      instr = "setle";
+      break;
+    default:
+      assert(0);
   }
 
   fprintf(code_gen->f, "%s ", instr);
@@ -411,30 +411,30 @@ void visit_cmp(CodeGenerator *code_gen, Expr *expr) {
   mov(code_gen, OPERAND(eax), &dest_op);
 }
 
-void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
+void mov(CodeGenerator *code_gen, const AssemblyOperand *src, const AssemblyOperand *dst) {
   // TODO: check that the op types are valid. Can't move from operand to
   // operand for example
-  AssemblyOperand *middle = NULL, *middle2 = NULL;
-  int use_scratch = src->type == AO_ADDRESS && dest->type == AO_ADDRESS;
+  const AssemblyOperand *middle = NULL, *middle2 = NULL;
+  const int use_scratch = src->type == AO_ADDRESS && dst->type == AO_ADDRESS;
 
-  RegRepr eax = {.reg = code_gen->A, .index = 2};
-  RegRepr al = {.reg = code_gen->A, .index = 0};
+  const RegRepr eax = {.reg = code_gen->A, .index = 2};
+  const RegRepr al = {.reg = code_gen->A, .index = 0};
 
   if (use_scratch) {
     middle = middle2 = OPERAND((src->sz == 1) ? al : eax);
   } else {
-    middle = dest;
+    middle = dst;
   }
 
-  char *instr1 = "movl", *instr2 = "movl";
+  char *instr1, *instr2 = "movl";
   if (src->type == AO_CONST) {
-    instr1 = (dest->sz == 4 ? "movl" : "movb");
-  } else if (src->sz == dest->sz) {
+    instr1 = (dst->sz == 4 ? "movl" : "movb");
+  } else if (src->sz == dst->sz) {
     instr1 = (src->sz == 4 ? "movl" : "movb");
     if (use_scratch) {
       instr2 = instr1;
     }
-  } else if (src->sz == 1 && dest->sz == 4) {
+  } else if (src->sz == 1 && dst->sz == 4) {
     instr1 = (src->type == AO_REGISTER ? "movzbl" : "movsbl");
     if (use_scratch) {
       instr2 = "movl";
@@ -442,18 +442,18 @@ void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
   } else {
     if (src->type == AO_ADDRESS) {
       instr1 = "movl";
-      if (dest->type == AO_ADDRESS) {
+      if (dst->type == AO_ADDRESS) {
         instr2 = "movb";
         middle2 = OPERAND(al);
       } else {
-        AssemblyOperand *reg = code_gen->A + 4 * (dest->val.reg.name[2] - 'a');
-        RegRepr reg_reduc = {.reg = reg, .index = 0};
-        dest = OPERAND(reg_reduc);
+        AssemblyOperand *reg = code_gen->A + 4 * (dst->val.reg.name[2] - 'a');
+        const RegRepr reg_reduc = {.reg = reg, .index = 0};
+        dst = OPERAND(reg_reduc);
       }
     } else {
       instr1 = "movb";
       AssemblyOperand *reg = code_gen->A + 4 * (src->val.reg.name[2] - 'a');
-      RegRepr reg_reduc = {.reg = reg, .index = 0};
+      const RegRepr reg_reduc = {.reg = reg, .index = 0};
       src = OPERAND(reg_reduc);
     }
   }
@@ -468,18 +468,18 @@ void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dest) {
     fprintf(code_gen->f, "%s ", instr2);
     print_assembly_operand(code_gen, middle2);
     fprintf(code_gen->f, ", ");
-    print_assembly_operand(code_gen, dest);
+    print_assembly_operand(code_gen, dst);
     fprintf(code_gen->f, "\n");
   }
 }
 
-void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand *op) {
+void print_assembly_operand(const CodeGenerator *code_gen, const AssemblyOperand *op) {
   if (op->type == AO_REGISTER) {
     fprintf(code_gen->f, "%s", op->val.reg.name);
     return;
   }
 
-  Operand *operand = op->val.operand;
+  const Operand *operand = op->val.operand;
 
   if (op->type == AO_ADDRESS) {
     fprintf(code_gen->f, "-%lu(%%rbp)", operand->val.address);

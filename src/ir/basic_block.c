@@ -14,7 +14,7 @@ BasicBlock *new_basic_block(char *label) {
 }
 
 void basic_block_free(BasicBlock *bb) {
-  Node *cur = bb->expressions->root;
+  const Node *cur = bb->expressions->root;
 
   while (cur != NULL) {
     Expr *expr = cur->data;

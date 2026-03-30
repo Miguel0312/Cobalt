@@ -14,7 +14,7 @@
 #define PARSING_ERROR 4
 #define CODE_GEN_ERROR 5
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
   if (argc < 2) {
     fprintf(stderr, "%d\n", argc);
     fprintf(stderr, "Usage: cobalt <file_name> [output_file]");
@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
   }
 
   fseek(f, 0, SEEK_END);
-  long length = ftell(f);
+  const long length = ftell(f);
   fseek(f, 0, SEEK_SET);
   char *buffer = malloc(length + 1);
   buffer[length] = '\0';
@@ -59,10 +59,10 @@ int main(int argc, char **argv) {
     return PARSING_ERROR;
   }
 
-  Node *bb_cur = parser->cfg->bbs->root;
+  const Node *bb_cur = parser->cfg->bbs->root;
   while (bb_cur != NULL) {
-    BasicBlock *bb = bb_cur->data;
-    Node *cur = bb->expressions->root;
+    const BasicBlock *bb = bb_cur->data;
+    const Node *cur = bb->expressions->root;
     printf("%s:\n", bb->label);
     while (cur != NULL) {
       Expr *expr = cur->data;
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
   char *assembly_file;
   int assembly_file_in_heap = 0;
   if (argc < 3) {
-    int filename_size = strlen(argv[1]);
+    const size_t filename_size = strlen(argv[1]);
     assembly_file = malloc(filename_size + 1);
     assembly_file_in_heap = 1;
     strcpy(assembly_file, argv[1]);
@@ -94,7 +94,7 @@ int main(int argc, char **argv) {
   CodeGenerator *code_gen = new_code_generator(parser->cfg, f);
   fclose(f);
 
-  int hasError = code_gen->hasError;
+  const int hasError = code_gen->hasError;
 
   code_gen_free(code_gen);
   parser_free(parser);

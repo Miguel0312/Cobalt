@@ -2,6 +2,7 @@
 #define CO_EXPR_H
 
 #include <stdio.h>
+
 typedef enum Operation {
   ADD,
   SUB,
@@ -56,11 +57,11 @@ Expr *new_expr_v(Operation op, int n, va_list operands);
 
 void expr_free(Expr *expr);
 
-void print_expr(Expr *expr);
+void print_expr(const Expr *expr);
 
-void print_binary_expr(Operand *op1, Operand *op2, Operand *op3, char *op_str);
+void print_binary_expr(const Operand *op1, const Operand *op2, const Operand *op3, char *op_str);
 
-void print_operand(Operand *operand);
+void print_operand(const Operand *operand);
 
 char *operation_to_string(Operation op);
 
@@ -68,14 +69,14 @@ void operand_free(Operand *operand);
 
 DataType get_data_type_from_operands(DataType type1, DataType type2);
 
-static inline int get_var_size(DataType type) {
+static inline int get_var_size(const DataType type) {
   switch (type) {
-  case INT:
-    return 4;
-  case CHAR:
-    return 1;
-  case LABEL:
-    return 0;
+    case INT:
+      return 4;
+    case CHAR:
+      return 1;
+    case LABEL:
+      return 0;
   }
   return 0;
 }

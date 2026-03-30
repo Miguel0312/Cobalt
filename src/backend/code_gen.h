@@ -41,25 +41,25 @@ void code_gen_free(CodeGenerator *code_gen);
 
 void generate_code(CodeGenerator *code_gen);
 
-void visit_bb(CodeGenerator *code_gen, BasicBlock *bb);
+void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb);
 
-void visit_shift(CodeGenerator *code_gen, Expr *expr);
+void visit_shift(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_binary_op(CodeGenerator *code_gen, Expr *expr);
+void visit_binary_op(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_div(CodeGenerator *code_gen, Expr *expr);
+void visit_div(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_assign(CodeGenerator *code_gen, Expr *expr);
+void visit_assign(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_ret(CodeGenerator *code_gen, Expr *expr);
+void visit_ret(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_test(CodeGenerator *code_gen, Expr *expr);
+void visit_test(CodeGenerator *code_gen, const Expr *expr);
 
-void visit_cmp(CodeGenerator *code_gen, Expr *expr);
+void visit_cmp(CodeGenerator *code_gen, const Expr *expr);
 
-void mov(CodeGenerator *code_gen, AssemblyOperand *src, AssemblyOperand *dst);
+void mov(CodeGenerator *code_gen, const AssemblyOperand *src, const AssemblyOperand *dst);
 
-void print_assembly_operand(CodeGenerator *code_gen, AssemblyOperand *op);
+void print_assembly_operand(const CodeGenerator *code_gen, const AssemblyOperand *op);
 
 void code_gen_report_error(CodeGenerator *code_gen, char *msg);
 

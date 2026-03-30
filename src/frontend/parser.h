@@ -20,13 +20,13 @@ void parser_free(Parser *parser);
 
 void parse_program(Parser *parser);
 
-int parser_is_at_end(Parser *parser);
+int parser_is_at_end(const Parser *parser);
 
 Token *parser_advance(Parser *parser);
 
-Token *parser_get_cur(Parser *parser);
+Token *parser_get_cur(const Parser *parser);
 
-Token *parser_peek(Parser *parser);
+Token *parser_peek(const Parser *parser);
 
 void parser_report_error(Parser *parser, char *msg);
 
@@ -40,9 +40,9 @@ int parser_consume_if(Parser *parser, TokenType type);
 
 int parser_consume_if_not(Parser *parser, TokenType type);
 
-void parser_add_expr(Parser *parser, Operation op, int n, ...);
+void parser_add_expr(const Parser *parser, Operation op, int n, ...);
 
-int char_literal_value(Parser *parser, char *lexeme);
+int char_literal_value(Parser *parser, const char *lexeme);
 
 BasicBlock *block(Parser *parser);
 

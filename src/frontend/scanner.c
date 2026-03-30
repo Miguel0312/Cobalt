@@ -6,10 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "parser.h"
 #include "frontend/token.h"
 #include "utils/constants.h"
 
-Scanner *new_scanner(char *src, unsigned long src_len) {
+Scanner *new_scanner(char *src, const unsigned long src_len) {
   Scanner *scanner = malloc(sizeof(Scanner));
 
   scanner->src = src;
@@ -31,190 +32,189 @@ Scanner *new_scanner(char *src, unsigned long src_len) {
 List *scan_tokens(Scanner *scanner) {
   assert(scanner != NULL);
   while (!scanner_is_at_end(scanner)) {
-    char c = get_next_char(scanner);
+    const char c = get_next_char(scanner);
     switch (c) {
-    case '(': {
-      scanner_add_token(scanner, LEFT_PAREN);
-      break;
-    }
-    case ')': {
-      scanner_add_token(scanner, RIGHT_PAREN);
-      break;
-    }
-    case '{': {
-      scanner_add_token(scanner, LEFT_BRACE);
-      break;
-    }
-    case '}': {
-      scanner_add_token(scanner, RIGHT_BRACE);
-      break;
-    }
-    case '[': {
-      scanner_add_token(scanner, LEFT_BRACKET);
-      break;
-    }
-    case ']': {
-      scanner_add_token(scanner, RIGHT_BRACKET);
-      break;
-    }
-    case ',': {
-      scanner_add_token(scanner, COMMA);
-      break;
-    }
-    case '.': {
-      scanner_add_token(scanner, DOT);
-      break;
-    }
-    case '-': {
-      scanner_add_token(scanner, MINUS);
-      break;
-    }
-    case '+': {
-      scanner_add_token(scanner, PLUS);
-      break;
-    }
-    case ';': {
-      scanner_add_token(scanner, SEMICOLON);
-      break;
-    }
-    case '%': {
-      scanner_add_token(scanner, PERCENT);
-      break;
-    }
-    case '/': {
-      if (scanner_peek(scanner) == '/') {
-        char comment_char;
-        do {
-          comment_char = get_next_char(scanner);
-        } while (comment_char != '\n' && comment_char != '\0');
-      } else if (scanner_peek(scanner) == '*') {
-        char comment_char = get_next_char(scanner);
-        do {
-          comment_char = get_next_char(scanner);
-        } while (!scanner_is_at_end(scanner) &&
-                 (comment_char != '*' || scanner_peek(scanner) != '/'));
-        if (scanner_is_at_end(scanner)) {
-          scanner_report_error(scanner, "Multi-line comment must be closed");
-        } else {
+      case '(': {
+        scanner_add_token(scanner, LEFT_PAREN);
+        break;
+      }
+      case ')': {
+        scanner_add_token(scanner, RIGHT_PAREN);
+        break;
+      }
+      case '{': {
+        scanner_add_token(scanner, LEFT_BRACE);
+        break;
+      }
+      case '}': {
+        scanner_add_token(scanner, RIGHT_BRACE);
+        break;
+      }
+      case '[': {
+        scanner_add_token(scanner, LEFT_BRACKET);
+        break;
+      }
+      case ']': {
+        scanner_add_token(scanner, RIGHT_BRACKET);
+        break;
+      }
+      case ',': {
+        scanner_add_token(scanner, COMMA);
+        break;
+      }
+      case '.': {
+        scanner_add_token(scanner, DOT);
+        break;
+      }
+      case '-': {
+        scanner_add_token(scanner, MINUS);
+        break;
+      }
+      case '+': {
+        scanner_add_token(scanner, PLUS);
+        break;
+      }
+      case ';': {
+        scanner_add_token(scanner, SEMICOLON);
+        break;
+      }
+      case '%': {
+        scanner_add_token(scanner, PERCENT);
+        break;
+      }
+      case '/': {
+        if (scanner_peek(scanner) == '/') {
+          char comment_char;
+          do {
+            comment_char = get_next_char(scanner);
+          } while (comment_char != '\n' && comment_char != '\0');
+        } else if (scanner_peek(scanner) == '*') {
           scanner_advance(scanner);
+          char comment_char;
+          do {
+            comment_char = get_next_char(scanner);
+          } while (!scanner_is_at_end(scanner) &&
+                   (comment_char != '*' || scanner_peek(scanner) != '/'));
+          if (scanner_is_at_end(scanner)) {
+            scanner_report_error(scanner, "Multi-line comment must be closed");
+          } else {
+            scanner_advance(scanner);
+          }
+        } else {
+          scanner_add_token(scanner, SLASH);
         }
-      } else {
-        scanner_add_token(scanner, SLASH);
-      }
-      break;
-    }
-    case '*': {
-      scanner_add_token(scanner, STAR);
-      break;
-    }
-    case '!': {
-      if (scanner_peek(scanner) == '=') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, BANG_EQUAL);
-      } else {
-        scanner_add_token(scanner, BANG);
-      }
-      break;
-    }
-    case '=': {
-      if (scanner_peek(scanner) == '=') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, EQUAL_EQUAL);
-      } else {
-        scanner_add_token(scanner, EQUAL);
-      }
-      break;
-    }
-    case '>': {
-      if (scanner_peek(scanner) == '=') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, GREATER_EQUAL);
-      } else if (scanner_peek(scanner) == '>') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, RIGHT_SHIFT_TOKEN);
-      } else {
-        scanner_add_token(scanner, GREATER);
-      }
-      break;
-    }
-    case '<': {
-      if (scanner_peek(scanner) == '=') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, LESS_EQUAL);
-      } else if (scanner_peek(scanner) == '<') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, LEFT_SHIFT_TOKEN);
-      } else {
-        scanner_add_token(scanner, LESS);
-      }
-      break;
-    }
-    case '&': {
-      if (scanner_peek(scanner) == '&') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, L_AND_TOKEN);
-      } else {
-        scanner_add_token(scanner, B_AND_TOKEN);
-      }
-      break;
-    }
-    case '|': {
-      if (scanner_peek(scanner) == '|') {
-        scanner_advance(scanner);
-        scanner_add_token(scanner, L_OR_TOKEN);
-      } else {
-        scanner_add_token(scanner, B_OR_TOKEN);
-      }
-      break;
-    }
-    case '^': {
-      scanner_add_token(scanner, B_XOR_TOKEN);
-      break;
-    }
-    case '\'': {
-      int found = read_char(scanner);
-      if (!found) {
-        scanner_report_error(scanner,
-                             "Error trying to parse character literal");
         break;
       }
-      scanner_add_token(scanner, CHAR_LITERAL);
-      break;
-    }
-    case ' ':
-    case '\t':
-    case '\r': {
-      break;
-    }
-    case '\n': {
-      break;
-    }
-    default: {
-      printf("%d %d\n", scanner->start, scanner->cur);
-      int found = 0;
-      char msg[MSG_BUFFER_SIZE];
-      if (isalpha(c) || c == '_') {
-        found = read_identifier(scanner);
-        if (found) {
-          TokenType tt = get_keyword(scanner);
+      case '*': {
+        scanner_add_token(scanner, STAR);
+        break;
+      }
+      case '!': {
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, BANG_EQUAL);
+        } else {
+          scanner_add_token(scanner, BANG);
+        }
+        break;
+      }
+      case '=': {
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, EQUAL_EQUAL);
+        } else {
+          scanner_add_token(scanner, EQUAL);
+        }
+        break;
+      }
+      case '>': {
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, GREATER_EQUAL);
+        } else if (scanner_peek(scanner) == '>') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, RIGHT_SHIFT_TOKEN);
+        } else {
+          scanner_add_token(scanner, GREATER);
+        }
+        break;
+      }
+      case '<': {
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, LESS_EQUAL);
+        } else if (scanner_peek(scanner) == '<') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, LEFT_SHIFT_TOKEN);
+        } else {
+          scanner_add_token(scanner, LESS);
+        }
+        break;
+      }
+      case '&': {
+        if (scanner_peek(scanner) == '&') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, L_AND_TOKEN);
+        } else {
+          scanner_add_token(scanner, B_AND_TOKEN);
+        }
+        break;
+      }
+      case '|': {
+        if (scanner_peek(scanner) == '|') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, L_OR_TOKEN);
+        } else {
+          scanner_add_token(scanner, B_OR_TOKEN);
+        }
+        break;
+      }
+      case '^': {
+        scanner_add_token(scanner, B_XOR_TOKEN);
+        break;
+      }
+      case '\'': {
+        const int found = read_char(scanner);
+        if (!found) {
+          scanner_report_error(scanner,
+                               "Error trying to parse character literal");
+          break;
+        }
+        scanner_add_token(scanner, CHAR_LITERAL);
+        break;
+      }
+      case ' ':
+      case '\t':
+      case '\r': {
+        break;
+      }
+      case '\n': {
+        scanner->line++;
+        break;
+      }
+      default: {
+        int found = 0;
+        char msg[MSG_BUFFER_SIZE];
+        if (isalpha(c) || c == '_') {
+          found = read_identifier(scanner);
+          const TokenType tt = get_keyword(scanner);
           scanner_add_token(scanner, tt);
+        } else if (isdigit(c)) {
+          found = read_number(scanner, msg);
+          if (found) {
+            scanner_add_token(scanner, INT_LITERAL);
+          }
+        } else {
+          snprintf(msg, MSG_BUFFER_SIZE, "Unexpected character: %c", c);
         }
-      } else if (isdigit(c)) {
-        found = read_number(scanner, msg);
-        if (found) {
-          scanner_add_token(scanner, INT_LITERAL);
-        }
-      } else {
-        snprintf(msg, MSG_BUFFER_SIZE, "Unexpected character: %c", c);
+
+        if (found)
+          break;
+
+        msg[MSG_BUFFER_SIZE - 1] = '\0';
+
+        scanner_report_error(scanner, msg);
       }
-
-      if (found)
-        break;
-
-      msg[MSG_BUFFER_SIZE - 1] = '\0';
-
-      scanner_report_error(scanner, msg);
-    }
     }
     scanner->start = scanner->cur;
   }
@@ -226,7 +226,7 @@ List *scan_tokens(Scanner *scanner) {
 
 int scanner_is_at_end(const Scanner *scanner) {
   assert(scanner != NULL);
-  return (unsigned long)scanner->cur >= scanner->src_len;
+  return (unsigned long) scanner->cur >= scanner->src_len;
 }
 
 char get_next_char(Scanner *scanner) {
@@ -234,15 +234,15 @@ char get_next_char(Scanner *scanner) {
   if (scanner_is_at_end(scanner))
     return '\0';
 
-  char res = scanner->src[scanner->cur];
+  const char res = scanner->src[scanner->cur];
   scanner_advance(scanner);
 
   return res;
 }
 
-void scanner_add_token(Scanner *scanner, TokenType type) {
+void scanner_add_token(Scanner *scanner, const TokenType type) {
   assert(scanner != NULL);
-  int lexeme_len = scanner->cur - scanner->start;
+  const int lexeme_len = scanner->cur - scanner->start;
   char *lexeme = malloc(lexeme_len + 1);
   lexeme[lexeme_len] = '\0';
 
@@ -251,6 +251,7 @@ void scanner_add_token(Scanner *scanner, TokenType type) {
   if (type == CHAR_LITERAL) {
     if (!(lexeme_len == 3 || (lexeme_len == 4 && lexeme[1] == '\\'))) {
       scanner_report_error(scanner, "Invalid character literal");
+      free(lexeme);
       return;
     }
   }
@@ -268,7 +269,7 @@ void scanner_advance(Scanner *scanner) {
   scanner->cur++;
 }
 
-char scanner_peek(Scanner *scanner) {
+char scanner_peek(const Scanner *scanner) {
   assert(scanner != NULL);
 
   return scanner->src[scanner->cur];
@@ -296,7 +297,7 @@ int read_number(Scanner *scanner, char *error_msg) {
     scanner_advance(scanner);
   }
 
-  char c = scanner_peek(scanner);
+  const char c = scanner_peek(scanner);
   if (isalpha(c) || c == '_') {
     snprintf(error_msg, MSG_BUFFER_SIZE,
              "Unexpected character while trying to parse number: %c", c);
@@ -319,8 +320,9 @@ int read_char(Scanner *scanner) {
   return 1;
 }
 
-TokenType get_keyword(Scanner *scanner) {
-  int lexeme_len = scanner->cur - scanner->start;
+// TODO: pass a string here and not the scanner
+TokenType get_keyword(const Scanner *scanner) {
+  const int lexeme_len = scanner->cur - scanner->start;
   if (lexeme_len >= MSG_BUFFER_SIZE) {
     // Definitely an identifier, no keyword is so big
     return IDENTIFIER;
@@ -360,7 +362,7 @@ void scanner_free(Scanner *scanner) {
 
   free(scanner->src);
 
-  Node *cur = scanner->tokens->root;
+  const Node *cur = scanner->tokens->root;
   while (cur != NULL) {
     Token *token = cur->data;
     token_free(token);
