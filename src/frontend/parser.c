@@ -208,6 +208,9 @@ BasicBlock *block(Parser *parser) {
       case IF:
         if_stmt(parser);
         break;
+      case WHILE:
+        while_stmt(parser);
+        break;
       default:
         parser_report_error(parser, "Unexpected token");
     }
@@ -285,6 +288,28 @@ BasicBlock *if_stmt(Parser *parser) {
   }
 
   return cur_bb;
+}
+
+void while_stmt(Parser *parser) {
+  parser_consume_token(parser, 1, WHILE);
+
+  parser_consume_token(parser, 1, LEFT_PAREN);
+
+  BasicBlock *cond_bb = cfg_push_bb(parser->cfg);
+  Operand *cond = expr(parser);
+  parser_add_expr(parser, TEST, 1, cond);
+
+  parser_consume_token(parser, 1, RIGHT_PAREN);
+
+  cfg_pop_bb(parser->cfg);
+
+  BasicBlock *loop_bb = block(parser);
+  BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
+
+  cond_bb->exit_true = loop_bb;
+  cond_bb->exit_false = finally_bb;
+
+  loop_bb->exit_true = loop_bb->exit_false = cond_bb;
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }

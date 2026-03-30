@@ -50,6 +50,8 @@ Operand *var_decl(Parser *parser);
 
 BasicBlock *if_stmt(Parser *parser);
 
+void while_stmt(Parser *parser);
+
 Operand *return_stmt(Parser *parser);
 
 Operand *expr(Parser *parser);
