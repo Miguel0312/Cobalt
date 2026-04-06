@@ -47,6 +47,8 @@ void visit_shift(CodeGenerator *code_gen, const Expr *expr);
 
 void visit_binary_op(CodeGenerator *code_gen, const Expr *expr);
 
+void visit_unary_op(CodeGenerator *code_gen, const Expr *expr);
+
 void visit_div(CodeGenerator *code_gen, const Expr *expr);
 
 void visit_assign(CodeGenerator *code_gen, const Expr *expr);

@@ -18,6 +18,8 @@ typedef enum Operation {
   ASSIGN,
   MOD,
   TEST,
+  INC,
+  DEC,
   IS_LESS,
   IS_LESS_EQUAL,
   IS_GREATER,
@@ -34,7 +36,7 @@ typedef union OperandVal {
 
 typedef enum OperandType { OT_INT, OT_CHAR, OT_ID } OperandType;
 
-typedef enum DataType { CHAR, INT, LABEL } DataType;
+typedef enum DataType { CHAR, INT } DataType;
 
 typedef struct Operand {
   OperandVal val;
@@ -75,8 +77,6 @@ static inline int get_var_size(const DataType type) {
       return 4;
     case CHAR:
       return 1;
-    case LABEL:
-      return 0;
   }
   return 0;
 }

@@ -58,6 +58,8 @@ Operand *expr(Parser *parser);
 
 Operand *var_assignment(Parser *parser);
 
+Operand *inc_dec(Parser *parser);
+
 Operand *logical_or(Parser *parser);
 
 Operand *logical_and(Parser *parser);

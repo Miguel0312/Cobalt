@@ -22,6 +22,8 @@ typedef enum TokenType {
   EQUAL_EQUAL,
   GREATER,
   GREATER_EQUAL,
+  INCREMENT,
+  DECREMENT,
   B_OR_TOKEN,
   B_XOR_TOKEN,
   B_AND_TOKEN,

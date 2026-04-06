@@ -611,7 +611,7 @@ Operand *add_sub(Parser *parser) {
 }
 
 Operand *mul_div(Parser *parser) {
-  Operand *lhs = primary_expr(parser);
+  Operand *lhs = inc_dec(parser);
   if (lhs == NULL)
     return NULL;
 
@@ -619,7 +619,7 @@ Operand *mul_div(Parser *parser) {
          parser_get_cur(parser)->type == SLASH ||
          parser_get_cur(parser)->type == PERCENT) {
     const TokenType tt = parser_advance(parser)->type;
-    Operand *rhs = primary_expr(parser);
+    Operand *rhs = inc_dec(parser);
     Operation op;
     switch (tt) {
       case STAR:
@@ -645,6 +645,49 @@ Operand *mul_div(Parser *parser) {
   }
 
   return lhs;
+}
+
+Operand *inc_dec(Parser *parser) {
+  TokenType tt = parser_get_cur(parser)->type;
+  if (tt == INCREMENT || tt == DECREMENT) {
+    parser_advance(parser);
+    Operand *operand = primary_expr(parser);
+    if (operand->op_type != OT_ID) {
+      parser_report_error(parser, "Expression is not assignable");
+      return NULL;
+    }
+
+    const Operation op = (tt == INCREMENT ? INC : DEC);
+
+    parser_add_expr(parser, op, 1, operand);
+
+    return operand;
+  }
+
+  tt = parser_peek(parser)->type;
+
+  if (tt == INCREMENT || tt == DECREMENT) {
+    Operand *operand = primary_expr(parser);
+    assert(operand != NULL);
+    if (operand->op_type != OT_ID) {
+      parser_report_error(parser, "Expression is not assignable");
+      return NULL;
+    }
+ Operand *old_res = cfg_add_tmp(parser->cfg, operand->data_type);
+
+    parser_add_expr(parser, ASSIGN, 2, old_res, operand);
+
+    const Operation op = (tt == INCREMENT ? INC : DEC);
+
+    parser_add_expr(parser, op, 1, operand);
+
+    parser_advance(parser);
+
+
+    return operand;
+  }
+
+  return primary_expr(parser);
 }
 
 Operand *primary_expr(Parser *parser) {

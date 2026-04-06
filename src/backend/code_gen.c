@@ -108,6 +108,11 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
         visit_cmp(code_gen, expr);
         break;
       }
+      case INC:
+      case DEC: {
+        visit_unary_op(code_gen, expr);
+        break;
+      }
       case TEST: {
         visit_test(code_gen, expr);
         break;
@@ -251,6 +256,32 @@ void visit_binary_op(CodeGenerator *code_gen, const Expr *expr) {
   fprintf(code_gen->f, "\n");
 
   mov(code_gen, OPERAND(scratch), &dest_op);
+}
+
+void visit_unary_op(CodeGenerator *code_gen, const Expr *expr) {
+  char *instr;
+  switch (expr->op) {
+    case INC: {
+      instr = "inc";
+      break;
+    }
+    case DEC: {
+      instr = "dec";
+      break;
+    }
+    default:
+      assert(0);
+  }
+
+  Operand *operand = expr->params[0];
+  AssemblyOperand a_operand;
+  a_operand.type = AO_ADDRESS;
+  a_operand.sz = get_var_size(operand->data_type);
+  a_operand.val.operand = operand;
+
+  fprintf(code_gen->f, "%s ", instr);
+  print_assembly_operand(code_gen, &a_operand);
+  fprintf(code_gen->f, "\n");
 }
 
 void visit_div(CodeGenerator *code_gen, const Expr *expr) {

@@ -53,6 +53,14 @@ void print_expr(const Expr *expr) {
       printf("\n");
       return;
     }
+    case INC:
+    case DEC: {
+      const Operand *lhs = expr->params[0];
+      char *instr = (expr->op == INC ? "++" : "--");
+      print_operand(lhs);
+      printf("%s\n", instr);
+      return;
+    }
     case TEST: {
       const Operand *operand = expr->params[0];
       printf("TEST ");

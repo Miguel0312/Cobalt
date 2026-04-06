@@ -67,11 +67,21 @@ List *scan_tokens(Scanner *scanner) {
         break;
       }
       case '-': {
-        scanner_add_token(scanner, MINUS);
+        if (scanner_peek(scanner) == '-') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, DECREMENT);
+        } else {
+          scanner_add_token(scanner, MINUS);
+        }
         break;
       }
       case '+': {
-        scanner_add_token(scanner, PLUS);
+        if (scanner_peek(scanner) == '+') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, INCREMENT);
+        } else {
+          scanner_add_token(scanner, PLUS);
+        }
         break;
       }
       case ';': {
