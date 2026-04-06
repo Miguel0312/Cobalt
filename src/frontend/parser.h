@@ -44,6 +44,8 @@ void parser_add_expr(const Parser *parser, Operation op, int n, ...);
 
 int char_literal_value(Parser *parser, const char *lexeme);
 
+Operand *stmt(Parser *parser, int consume_semicolon);
+
 BasicBlock *block(Parser *parser);
 
 Operand *var_decl(Parser *parser);
@@ -51,6 +53,8 @@ Operand *var_decl(Parser *parser);
 BasicBlock *if_stmt(Parser *parser);
 
 void while_stmt(Parser *parser);
+
+void for_stmt(Parser *parser);
 
 Operand *return_stmt(Parser *parser);
 

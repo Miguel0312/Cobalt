@@ -182,38 +182,49 @@ void parser_add_expr(const Parser *parser, const Operation op, const int n, ...)
   va_end(args);
 }
 
+Operand *stmt(Parser *parser, int consume_semicolon) {
+  switch (parser_get_cur(parser)->type) {
+    case INT_TS:
+    case CHAR_TS:
+      var_decl(parser);
+      break;
+    case RETURN:
+      return_stmt(parser);
+      break;
+    case IDENTIFIER: {
+      Operand *operand = expr(parser);
+      if (consume_semicolon) {
+        parser_consume_token(parser, 1, SEMICOLON);
+      }
+      return operand;
+    }
+    case LEFT_BRACE:
+      block(parser);
+      break;
+    case IF:
+      if_stmt(parser);
+      break;
+    case WHILE:
+      while_stmt(parser);
+      break;
+    case FOR:
+      for_stmt(parser);
+      break;
+    default:
+      parser_report_error(parser, "Unexpected token");
+  }
+
+  return NULL;
+}
+
 BasicBlock *block(Parser *parser) {
   parser_consume_token(parser, 1, LEFT_BRACE);
   BasicBlock *bb = cfg_push_bb(parser->cfg);
   cfg_push_symbol_table(parser->cfg);
 
-  TokenType cur_type;
   while (!parser_is_at_end(parser) &&
-         (cur_type = parser_get_cur(parser)->type) != RIGHT_BRACE) {
-    switch (cur_type) {
-      case INT_TS:
-      case CHAR_TS:
-        var_decl(parser);
-        break;
-      case RETURN:
-        return_stmt(parser);
-        break;
-      case IDENTIFIER:
-        expr(parser);
-        parser_consume_token(parser, 1, SEMICOLON);
-        break;
-      case LEFT_BRACE:
-        block(parser);
-        break;
-      case IF:
-        if_stmt(parser);
-        break;
-      case WHILE:
-        while_stmt(parser);
-        break;
-      default:
-        parser_report_error(parser, "Unexpected token");
-    }
+         parser_get_cur(parser)->type != RIGHT_BRACE) {
+    stmt(parser, 1);
   }
 
   assert(!is_stack_empty(parser->cfg->bb_stack));
@@ -310,6 +321,51 @@ void while_stmt(Parser *parser) {
   cond_bb->exit_false = finally_bb;
 
   loop_bb->exit_true = loop_bb->exit_false = cond_bb;
+}
+
+void for_stmt(Parser *parser) {
+  parser_consume_token(parser, 1, FOR);
+
+  parser_consume_token(parser, 1, LEFT_PAREN);
+
+  cfg_push_symbol_table(parser->cfg);
+
+  cfg_push_bb(parser->cfg);
+
+  if (parser_get_cur(parser)->type != SEMICOLON) {
+    stmt(parser, 0);
+  }
+  cfg_pop_bb(parser->cfg);
+  parser_consume_token(parser, 1, SEMICOLON);
+
+  BasicBlock *cond_bb = cfg_push_bb(parser->cfg);
+  Operand *cond = NULL;
+  if (parser_get_cur(parser)->type != SEMICOLON) {
+    cond = stmt(parser, 0);
+  }
+  if (cond != NULL) {
+    parser_add_expr(parser, TEST, 1, cond);
+  }
+  cfg_pop_bb(parser->cfg);
+  parser_consume_token(parser, 1, SEMICOLON);
+
+  BasicBlock *inc_bb = cfg_push_bb(parser->cfg);
+  if (parser_get_cur(parser)->type != RIGHT_PAREN) {
+    stmt(parser, 0);
+  }
+  cfg_pop_bb(parser->cfg);
+
+  parser_consume_token(parser, 1, RIGHT_PAREN);
+  BasicBlock *loop_bb = block(parser);
+  BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
+
+  cond_bb->exit_true = loop_bb;
+  cond_bb->exit_false = finally_bb;
+
+  loop_bb->exit_true = loop_bb->exit_false = inc_bb;
+  inc_bb->exit_true = inc_bb->exit_false = cond_bb;
+
+  cfg_pop_symbol_table(parser->cfg);
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }
@@ -727,7 +783,10 @@ Operand *primary_expr(Parser *parser) {
     operand = expr(parser);
     parser_consume_token(parser, 1, RIGHT_PAREN);
   } else {
-    parser_report_error(parser, "Unexpected token while parsing primary_expr");
+    char msg[MSG_BUFFER_SIZE];
+    snprintf(msg, MSG_BUFFER_SIZE, "Unexpected token while parsing primary_expr, got %s",
+             token_type_to_string(parser_get_cur(parser)->type));
+    parser_report_error(parser, msg);
     return NULL;
   }
 
