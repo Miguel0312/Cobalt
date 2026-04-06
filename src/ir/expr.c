@@ -44,11 +44,15 @@ void print_expr(const Expr *expr) {
       printf("\n");
       return;
     }
-    case ASSIGN: {
+    case ASSIGN:
+    case L_NOT: {
       const Operand *lhs = expr->params[0];
       const Operand *rhs = expr->params[1];
       print_operand(lhs);
       printf(" = ");
+      if (expr->op == L_NOT) {
+        printf("!");
+      }
       print_operand(rhs);
       printf("\n");
       return;
@@ -210,6 +214,12 @@ char *operation_to_string(const Operation op) {
       return "L_AND";
     case L_OR:
       return "L_OR";
+    case L_NOT:
+      return "L_NOT";
+    case INC:
+      return "INC";
+    case DEC:
+      return "DEC";
     case ASSIGN:
       return "ASSIGN";
     case MOD:

@@ -13,6 +13,7 @@ typedef enum Operation {
   B_AND,
   L_AND,
   L_OR,
+  L_NOT,
   LEFT_SHIFT,
   RIGHT_SHIFT,
   ASSIGN,

@@ -664,6 +664,19 @@ Operand *inc_dec(Parser *parser) {
     return operand;
   }
 
+  if (tt == BANG) {
+    parser_advance(parser);
+    Operand *operand = primary_expr(parser);
+
+    parser_add_expr(parser, TEST, 1, operand);
+
+    Operand *result = cfg_add_tmp(parser->cfg, CHAR);
+
+    parser_add_expr(parser, L_NOT, 2, result, operand);
+
+    return result;
+  }
+
   tt = parser_peek(parser)->type;
 
   if (tt == INCREMENT || tt == DECREMENT) {
@@ -673,7 +686,7 @@ Operand *inc_dec(Parser *parser) {
       parser_report_error(parser, "Expression is not assignable");
       return NULL;
     }
- Operand *old_res = cfg_add_tmp(parser->cfg, operand->data_type);
+    Operand *old_res = cfg_add_tmp(parser->cfg, operand->data_type);
 
     parser_add_expr(parser, ASSIGN, 2, old_res, operand);
 
@@ -683,8 +696,7 @@ Operand *inc_dec(Parser *parser) {
 
     parser_advance(parser);
 
-
-    return operand;
+    return old_res;
   }
 
   return primary_expr(parser);

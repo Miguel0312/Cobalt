@@ -108,6 +108,10 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
         visit_cmp(code_gen, expr);
         break;
       }
+      case L_NOT: {
+        visit_not(code_gen, expr);
+        break;
+      }
       case INC:
       case DEC: {
         visit_unary_op(code_gen, expr);
@@ -181,6 +185,18 @@ void visit_shift(CodeGenerator *code_gen, const Expr *expr) {
   fprintf(code_gen->f, "\n");
 
   mov(code_gen, OPERAND(scratch), &dest_op);
+}
+
+void visit_not(const CodeGenerator *code_gen, const Expr *expr) {
+  AssemblyOperand op1;
+
+  op1.type = AO_ADDRESS;
+  op1.val.operand = expr->params[0];
+  op1.sz = get_var_size(expr->params[0]->data_type);
+
+  fprintf(code_gen->f, "sete ");
+  print_assembly_operand(code_gen, &op1);
+  fprintf(code_gen->f, "\n");
 }
 
 void visit_binary_op(CodeGenerator *code_gen, const Expr *expr) {
@@ -258,7 +274,7 @@ void visit_binary_op(CodeGenerator *code_gen, const Expr *expr) {
   mov(code_gen, OPERAND(scratch), &dest_op);
 }
 
-void visit_unary_op(CodeGenerator *code_gen, const Expr *expr) {
+void visit_unary_op(const CodeGenerator *code_gen, const Expr *expr) {
   char *instr;
   switch (expr->op) {
     case INC: {
@@ -466,6 +482,17 @@ void mov(CodeGenerator *code_gen, const AssemblyOperand *src, const AssemblyOper
       instr2 = instr1;
     }
   } else if (src->sz == 1 && dst->sz == 4) {
+    if (src->type == AO_ADDRESS && dst->type == AO_ADDRESS) {
+      fprintf(code_gen->f, "movb ");
+      print_assembly_operand(code_gen, src);
+      fprintf(code_gen->f, ", ");
+      print_assembly_operand(code_gen, OPERAND(al));
+      fprintf(code_gen->f, "\n");
+
+      src = OPERAND(al);
+      middle = middle2 = OPERAND(eax);
+    }
+
     instr1 = (src->type == AO_REGISTER ? "movzbl" : "movsbl");
     if (use_scratch) {
       instr2 = "movl";
