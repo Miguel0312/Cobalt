@@ -44,6 +44,8 @@ typedef enum TokenType {
   RETURN,
   FOR,
   WHILE,
+  BREAK,
+  CONTINUE,
   EOF_TOKEN
 } TokenType;
 
@@ -60,4 +62,4 @@ void token_free(Token *token);
 
 char *token_type_to_string(TokenType type);
 
-#endif // !TOKEN_H
+#endif // CO_TOKEN_H

@@ -121,6 +121,11 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
         visit_test(code_gen, expr);
         break;
       }
+      case JMP:
+      case JMP_FALSE: {
+        visit_jmp(code_gen, expr);
+        break;
+      }
       default: {
         char msg[MSG_BUFFER_SIZE];
         snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
@@ -278,11 +283,11 @@ void visit_unary_op(const CodeGenerator *code_gen, const Expr *expr) {
   char *instr;
   switch (expr->op) {
     case INC: {
-      instr = "inc";
+      instr = expr->params[0]->data_type == INT ? "incl" : "incb";
       break;
     }
     case DEC: {
-      instr = "dec";
+      instr = expr->params[0]->data_type == INT ? "decl" : "decb";
       break;
     }
     default:
@@ -394,6 +399,18 @@ void visit_test(CodeGenerator *code_gen, const Expr *expr) {
   mov(code_gen, &op1, OPERAND(eax));
 
   fprintf(code_gen->f, "testl %%eax, %%eax\n");
+}
+
+void visit_jmp(CodeGenerator *code_gen, const Expr *expr) {
+  BasicBlock *target_bb = expr->params[0]->val.bb;
+  BasicBlock *dest;
+  if (expr->op == JMP) {
+    dest = target_bb;
+  } else {
+    dest = target_bb->exit_false;
+  }
+
+  fprintf(code_gen->f, "jmp %s\n", dest->label);
 }
 
 void visit_cmp(CodeGenerator *code_gen, const Expr *expr) {

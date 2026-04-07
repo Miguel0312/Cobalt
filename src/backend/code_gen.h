@@ -58,6 +58,8 @@ void visit_ret(CodeGenerator *code_gen, const Expr *expr);
 
 void visit_test(CodeGenerator *code_gen, const Expr *expr);
 
+void visit_jmp(CodeGenerator *code_gen, const Expr *expr);
+
 void visit_cmp(CodeGenerator *code_gen, const Expr *expr);
 
 void mov(CodeGenerator *code_gen, const AssemblyOperand *src, const AssemblyOperand *dst);

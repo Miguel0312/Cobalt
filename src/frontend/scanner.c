@@ -359,6 +359,12 @@ TokenType get_keyword(const Scanner *scanner) {
   if (strcmp(lexeme, "while") == 0) {
     return WHILE;
   }
+  if (strcmp(lexeme, "break") == 0) {
+    return BREAK;
+  }
+  if (strcmp(lexeme, "continue") == 0) {
+    return CONTINUE;
+  }
   if (strcmp(lexeme, "return") == 0) {
     return RETURN;
   }

@@ -24,6 +24,7 @@ Parser *new_parser(List *tokens) {
 
   parser->cur_token = tokens->root;
   parser->hasError = 0;
+  parser->break_dst = parser->continue_dst = NULL;
   parser->cfg = new_cfg();
 
   parse_program(parser);
@@ -210,6 +211,10 @@ Operand *stmt(Parser *parser, int consume_semicolon) {
     case FOR:
       for_stmt(parser);
       break;
+    case BREAK:
+    case CONTINUE:
+      break_cont_stmt(parser);
+      break;
     default:
       parser_report_error(parser, "Unexpected token");
   }
@@ -314,13 +319,22 @@ void while_stmt(Parser *parser) {
 
   cfg_pop_bb(parser->cfg);
 
+  BasicBlock *cur_break = parser->break_dst, *cur_continue = parser->continue_dst;
+  parser->break_dst = cond_bb, parser->continue_dst = cond_bb;
+
   BasicBlock *loop_bb = block(parser);
+
+  parser->break_dst = cur_break, parser->continue_dst = cur_continue;
+
+  // Bottom basic block of the loop block
+  BasicBlock *exit_bb = parser->cfg->bbs->end->prev->data;
+
   BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
 
   cond_bb->exit_true = loop_bb;
   cond_bb->exit_false = finally_bb;
 
-  loop_bb->exit_true = loop_bb->exit_false = cond_bb;
+  exit_bb->exit_true = exit_bb->exit_false = cond_bb;
 }
 
 void for_stmt(Parser *parser) {
@@ -356,16 +370,51 @@ void for_stmt(Parser *parser) {
   cfg_pop_bb(parser->cfg);
 
   parser_consume_token(parser, 1, RIGHT_PAREN);
+
+  BasicBlock *cur_break = parser->break_dst, *cur_continue = parser->continue_dst;
+  parser->break_dst = cond_bb, parser->continue_dst = inc_bb;
+
   BasicBlock *loop_bb = block(parser);
+
+  parser->break_dst = cur_break, parser->continue_dst = cur_continue;
+  // Bottom basic block of the loop block
+  BasicBlock *exit_bb = parser->cfg->bbs->end->prev->data;
+
   BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
 
   cond_bb->exit_true = loop_bb;
   cond_bb->exit_false = finally_bb;
 
-  loop_bb->exit_true = loop_bb->exit_false = inc_bb;
+  exit_bb->exit_true = exit_bb->exit_false = inc_bb;
   inc_bb->exit_true = inc_bb->exit_false = cond_bb;
 
   cfg_pop_symbol_table(parser->cfg);
+}
+
+void break_cont_stmt(Parser *parser) {
+  const TokenType tt = parser_get_cur(parser)->type;
+
+  parser_consume_token(parser, 2, BREAK, CONTINUE);
+
+  if (parser->break_dst == NULL) {
+    parser_report_error(parser, "break and continue can only be used inside for or while");
+  }
+
+  Operation op;
+  OperandVal val;
+  if (tt == BREAK) {
+    op = JMP_FALSE;
+    val.bb = parser->break_dst;
+  } else {
+    op = JMP;
+    val.bb = parser->continue_dst;
+  }
+
+
+  Operand *operand = new_operand(val, BB, OT_BB, NULL);
+
+  parser_add_expr(parser, op, 1, operand);
+  parser_consume_token(parser, 1, SEMICOLON);
 }
 
 Operand *expr(Parser *parser) { return var_assignment(parser); }

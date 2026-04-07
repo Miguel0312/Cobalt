@@ -3,6 +3,8 @@
 
 #include <stdio.h>
 
+#include "basic_block.h"
+
 typedef enum Operation {
   ADD,
   SUB,
@@ -19,6 +21,8 @@ typedef enum Operation {
   ASSIGN,
   MOD,
   TEST,
+  JMP,
+  JMP_FALSE,
   INC,
   DEC,
   IS_LESS,
@@ -30,14 +34,20 @@ typedef enum Operation {
   RET
 } Operation;
 
+typedef enum JmpDest {
+  TRUE_BB,
+  FALSE_BB
+} JmpDest;
+
 typedef union OperandVal {
   int int_val;
+  BasicBlock *bb;
   unsigned long address;
 } OperandVal;
 
-typedef enum OperandType { OT_INT, OT_CHAR, OT_ID } OperandType;
+typedef enum OperandType { OT_INT, OT_CHAR, OT_ID, OT_BB } OperandType;
 
-typedef enum DataType { CHAR, INT } DataType;
+typedef enum DataType { CHAR, INT, BB } DataType;
 
 typedef struct Operand {
   OperandVal val;
@@ -78,8 +88,9 @@ static inline int get_var_size(const DataType type) {
       return 4;
     case CHAR:
       return 1;
+    default:
+      return 0;
   }
-  return 0;
 }
 
 #endif // !CO_EXPR_H

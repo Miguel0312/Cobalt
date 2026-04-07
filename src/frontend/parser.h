@@ -12,6 +12,8 @@ typedef struct Parser {
   CFG *cfg;
 
   int hasError;
+  BasicBlock *break_dst;
+  BasicBlock *continue_dst;
 } Parser;
 
 Parser *new_parser(List *tokens);
@@ -55,6 +57,8 @@ BasicBlock *if_stmt(Parser *parser);
 void while_stmt(Parser *parser);
 
 void for_stmt(Parser *parser);
+
+void break_cont_stmt(Parser *parser);
 
 Operand *return_stmt(Parser *parser);
 

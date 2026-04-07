@@ -72,6 +72,14 @@ void print_expr(const Expr *expr) {
       printf("\n");
       return;
     }
+    case JMP: {
+      printf("continue\n");
+      return;
+    }
+    case JMP_FALSE: {
+      printf("break\n");
+      return;
+    }
     case ADD:
     case SUB:
     case MUL:
@@ -244,6 +252,10 @@ char *operation_to_string(const Operation op) {
       return "TEST";
     case RET:
       return "RET";
+    case JMP:
+      return "JMP";
+    case JMP_FALSE:
+      return "JMP_FALSE";
   }
 
   return "ERROR";
