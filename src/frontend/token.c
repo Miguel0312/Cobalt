@@ -41,16 +41,26 @@ char *token_type_to_string(const TokenType type) {
       return ".";
     case MINUS:
       return "-";
+    case MINUS_EQUAL:
+      return "-=";
     case PLUS:
       return "+";
+    case PLUS_EQUAL:
+      return "+=";
     case SEMICOLON:
       return ";";
     case SLASH:
       return "/";
+    case SLASH_EQUAL:
+      return "/=";
     case STAR:
       return "*";
+    case STAR_EQUAL:
+      return "*=";
     case PERCENT:
       return "%";
+    case PERCENT_EQUAL:
+      return "%=";
     case BANG:
       return "!";
     case BANG_EQUAL:

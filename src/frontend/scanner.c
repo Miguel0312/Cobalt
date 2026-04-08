@@ -70,6 +70,9 @@ List *scan_tokens(Scanner *scanner) {
         if (scanner_peek(scanner) == '-') {
           scanner_advance(scanner);
           scanner_add_token(scanner, DECREMENT);
+        } else if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, MINUS_EQUAL);
         } else {
           scanner_add_token(scanner, MINUS);
         }
@@ -79,6 +82,9 @@ List *scan_tokens(Scanner *scanner) {
         if (scanner_peek(scanner) == '+') {
           scanner_advance(scanner);
           scanner_add_token(scanner, INCREMENT);
+        } else if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, PLUS_EQUAL);
         } else {
           scanner_add_token(scanner, PLUS);
         }
@@ -89,7 +95,12 @@ List *scan_tokens(Scanner *scanner) {
         break;
       }
       case '%': {
-        scanner_add_token(scanner, PERCENT);
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, PERCENT_EQUAL);
+        } else {
+          scanner_add_token(scanner, PERCENT);
+        }
         break;
       }
       case '/': {
@@ -110,13 +121,21 @@ List *scan_tokens(Scanner *scanner) {
           } else {
             scanner_advance(scanner);
           }
+        } else if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, SLASH_EQUAL);
         } else {
           scanner_add_token(scanner, SLASH);
         }
         break;
       }
       case '*': {
-        scanner_add_token(scanner, STAR);
+        if (scanner_peek(scanner) == '=') {
+          scanner_advance(scanner);
+          scanner_add_token(scanner, STAR_EQUAL);
+        } else {
+          scanner_add_token(scanner, STAR);
+        }
         break;
       }
       case '!': {

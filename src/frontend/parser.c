@@ -420,7 +420,9 @@ void break_cont_stmt(Parser *parser) {
 Operand *expr(Parser *parser) { return var_assignment(parser); }
 
 Operand *var_assignment(Parser *parser) {
-  if (parser_peek(parser)->type != EQUAL) {
+  const TokenType tt = parser_peek(parser)->type;
+  if (tt != EQUAL && tt != PLUS_EQUAL && tt != MINUS_EQUAL && tt != STAR_EQUAL && tt != SLASH_EQUAL && tt !=
+      PERCENT_EQUAL) {
     return logical_or(parser);
   }
 
@@ -434,13 +436,51 @@ Operand *var_assignment(Parser *parser) {
     snprintf(msg, MSG_BUFFER_SIZE,
              "Variable %s has not been declared in this scope", token->lexeme);
     parser_report_error(parser, msg);
+    return NULL;
   }
 
-  parser_consume_token(parser, 1, EQUAL);
+  parser_consume_token(parser, 6, EQUAL, PLUS_EQUAL, MINUS_EQUAL, STAR_EQUAL, SLASH_EQUAL, PERCENT_EQUAL);
 
   Operand *rhs = expr(parser);
 
-  parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+  switch (tt) {
+    case PLUS_EQUAL: {
+      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      parser_add_expr(parser, ADD, 3, tmp, lhs, rhs);
+      parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
+      break;
+    }
+    case MINUS_EQUAL: {
+      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      parser_add_expr(parser, SUB, 3, tmp, lhs, rhs);
+      parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
+      break;
+    }
+    case STAR_EQUAL: {
+      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      parser_add_expr(parser, MUL, 3, tmp, lhs, rhs);
+      parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
+      break;
+    }
+    case SLASH_EQUAL: {
+      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      parser_add_expr(parser, DIV, 3, tmp, lhs, rhs);
+      parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
+      break;
+    }
+    case PERCENT_EQUAL: {
+      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      parser_add_expr(parser, MOD, 3, tmp, lhs, rhs);
+      parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
+      break;
+    }
+    case EQUAL: {
+      parser_add_expr(parser, ASSIGN, 2, lhs, rhs);
+      break;
+    }
+    default:
+      assert(0 && "Unreachable");
+  }
 
   return lhs;
 }
