@@ -871,6 +871,13 @@ Operand *primary_expr(Parser *parser) {
   } else if (token->type == LEFT_PAREN) {
     operand = expr(parser);
     parser_consume_token(parser, 1, RIGHT_PAREN);
+  } else if (token->type == PLUS) {
+    return expr(parser);
+  } else if (token->type == MINUS) {
+    Operand *rhs = primary_expr(parser);
+    Operand *res = cfg_add_tmp(parser->cfg, rhs->data_type);
+    parser_add_expr(parser, NEG, 2, res, rhs);
+    return res;
   } else {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE, "Unexpected token while parsing primary_expr, got %s",

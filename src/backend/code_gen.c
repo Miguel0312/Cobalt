@@ -112,6 +112,10 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
         visit_not(code_gen, expr);
         break;
       }
+      case NEG: {
+        visit_neg(code_gen, expr);
+        break;
+      }
       case INC:
       case DEC: {
         visit_unary_op(code_gen, expr);
@@ -201,6 +205,29 @@ void visit_not(const CodeGenerator *code_gen, const Expr *expr) {
 
   fprintf(code_gen->f, "sete ");
   print_assembly_operand(code_gen, &op1);
+  fprintf(code_gen->f, "\n");
+}
+
+void visit_neg(CodeGenerator *code_gen, const Expr *expr) {
+  Operand *dest = expr->params[0], *rhs = expr->params[1];
+
+  AssemblyOperand dest_op, rhs_op;
+
+  dest_op.type = AO_ADDRESS;
+  rhs_op.type = (rhs->op_type == OT_ID ? AO_ADDRESS : AO_CONST);
+  dest_op.val.operand = dest, rhs_op.val.operand = rhs;
+
+  if (rhs_op.type == AO_ADDRESS) {
+    rhs_op.sz = get_var_size(rhs->data_type);
+  }
+  dest_op.sz = get_var_size(dest->data_type);
+
+  mov(code_gen, &rhs_op, &dest_op);
+
+  char *instr = dest->data_type == INT ? "negl" : "negb";
+
+  fprintf(code_gen->f, "%s ", instr);
+  print_assembly_operand(code_gen, &dest_op);
   fprintf(code_gen->f, "\n");
 }
 
