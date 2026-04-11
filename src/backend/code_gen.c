@@ -362,8 +362,7 @@ void visit_div(CodeGenerator *code_gen, const Expr *expr) {
     mov(code_gen, &rhs_op, OPERAND(ecx));
     rhs_op = ecx.reg[ecx.index];
   }
-
-  fprintf(code_gen->f, "div ");
+  fprintf(code_gen->f, "idivl ");
   print_assembly_operand(code_gen, &rhs_op);
   fprintf(code_gen->f, "\n");
 
