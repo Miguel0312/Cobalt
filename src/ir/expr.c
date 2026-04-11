@@ -1,9 +1,10 @@
 #include "expr.h"
 #include <stdarg.h>
 #include <stdlib.h>
+#include "cfg.h"
 
 Operand *new_operand(const OperandVal val, const DataType data_type, const OperandType op_type,
-                     char *name) {
+                     const char *name) {
   Operand *operand = malloc(sizeof(Operand));
 
   operand->val = val;
@@ -81,6 +82,13 @@ void print_expr(const Expr *expr) {
     }
     case JMP_FALSE: {
       printf("break\n");
+      return;
+    }
+    case CALL: {
+      print_operand(expr->params[0]);
+      printf(" = ");
+      print_operand(expr->params[1]);
+      printf("()\n");
       return;
     }
     case ADD:
@@ -203,6 +211,12 @@ void print_operand(const Operand *operand) {
     printf("'%c'", operand->val.int_val);
   else if (operand->op_type == OT_ID)
     printf("%s", operand->name);
+  else if (operand->op_type == OT_BB)
+    printf("%s", operand->val.bb->label);
+  else if (operand->op_type == OT_FUNC)
+    printf("%s", operand->val.func->label);
+  else
+    printf("ERROR: print_operand not implemented for this op_type");
 }
 
 char *operation_to_string(const Operation op) {
@@ -259,6 +273,8 @@ char *operation_to_string(const Operation op) {
       return "RET";
     case JMP:
       return "JMP";
+    case CALL:
+      return "CALL";
     case JMP_FALSE:
       return "JMP_FALSE";
   }
@@ -277,7 +293,7 @@ void expr_free(Expr *expr) {
 void operand_free(Operand *operand) {
   // Is tmp?
   if (operand->name != NULL && operand->name[0] == '!')
-    free(operand->name);
+    free((void *) operand->name);
   free(operand);
 }
 

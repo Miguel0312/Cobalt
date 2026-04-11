@@ -140,6 +140,10 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
         visit_jmp(code_gen, expr);
         break;
       }
+      case CALL: {
+        visit_call(code_gen, expr);
+        break;
+      }
       default: {
         char msg[MSG_BUFFER_SIZE];
         snprintf(msg, MSG_BUFFER_SIZE, "Operation %s not implemented\n",
@@ -163,6 +167,20 @@ void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb) {
     fprintf(code_gen->f, "jz %s\n", bb->exit_false->label);
   }
 }
+
+void visit_call(CodeGenerator *code_gen, const Expr *expr) {
+  Operand *res = expr->params[0], *func = expr->params[1];
+  const RegRepr rax = {.index = 2, .reg = code_gen->A};
+
+  AssemblyOperand dest_op;
+  dest_op.type = AO_ADDRESS;
+  dest_op.sz = get_var_size(res->data_type);
+  dest_op.val.operand = res;
+
+  fprintf(code_gen->f, "call %s\n", func->val.func->label);
+  mov(code_gen, OPERAND(rax), &dest_op);
+}
+
 
 void visit_shift(CodeGenerator *code_gen, const Expr *expr) {
   const RegRepr ecx = {.index = 2, .reg = code_gen->C};

@@ -5,6 +5,8 @@
 
 #include "basic_block.h"
 
+struct CFG;
+
 typedef enum Operation {
   ADD,
   SUB,
@@ -26,6 +28,7 @@ typedef enum Operation {
   JMP_FALSE,
   INC,
   DEC,
+  CALL,
   IS_LESS,
   IS_LESS_EQUAL,
   IS_GREATER,
@@ -43,18 +46,19 @@ typedef enum JmpDest {
 typedef union OperandVal {
   int int_val;
   BasicBlock *bb;
+  struct CFG *func;
   unsigned long address;
 } OperandVal;
 
-typedef enum OperandType { OT_INT, OT_CHAR, OT_ID, OT_BB } OperandType;
+typedef enum OperandType { OT_INT, OT_CHAR, OT_ID, OT_BB, OT_FUNC } OperandType;
 
-typedef enum DataType { CHAR, INT, BB } DataType;
+typedef enum DataType { CHAR, INT, BB, FUNC } DataType;
 
 typedef struct Operand {
   OperandVal val;
   OperandType op_type;
   DataType data_type;
-  char *name;
+  const char *name;
 } Operand;
 
 typedef struct Expr {
@@ -63,7 +67,7 @@ typedef struct Expr {
 } Expr;
 
 Operand *new_operand(OperandVal val, DataType data_type, OperandType op_type,
-                     char *name);
+                     const char *name);
 
 Expr *new_expr(Operation op, int n, ...);
 

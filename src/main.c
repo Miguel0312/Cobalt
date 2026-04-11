@@ -62,6 +62,7 @@ int main(const int argc, char **argv) {
   const Node *cfg_cur = parser->cfgs->root;
   while (cfg_cur != NULL) {
     CFG *cfg = cfg_cur->data;
+    printf("%s:\n", cfg->label);
     const Node *bb_cur = cfg->bbs->root;
     while (bb_cur != NULL) {
       const BasicBlock *bb = bb_cur->data;

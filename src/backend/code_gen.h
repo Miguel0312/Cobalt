@@ -44,6 +44,8 @@ void visit_cfg(CodeGenerator *code_gen, const CFG *cfg);
 
 void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb);
 
+void visit_call(CodeGenerator *code_gen, const Expr *expr);
+
 void visit_shift(CodeGenerator *code_gen, const Expr *expr);
 
 void visit_not(const CodeGenerator *code_gen, const Expr *expr);

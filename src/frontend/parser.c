@@ -198,7 +198,6 @@ void function(Parser *parser) {
     parser_report_error(parser, msg);
     return;
   }
-  
   CFG *cfg = new_cfg(name);
   list_append(parser->cfgs, cfg);
   hash_map_insert(parser->functions, name, cfg);
@@ -887,11 +886,26 @@ Operand *primary_expr(Parser *parser) {
     operand = new_operand(val, CHAR, OT_CHAR, NULL);
     list_append(get_cur_cfg(parser)->operands, operand);
   } else if (token->type == IDENTIFIER) {
+    CFG *cfg = hash_map_get(parser->functions, token->lexeme);
+
+    if (cfg != NULL) {
+      parser_consume_token(parser, 1, LEFT_PAREN);
+      parser_consume_token(parser, 1, RIGHT_PAREN);
+
+      OperandVal val = {.func = cfg};
+      operand = new_operand(val, FUNC, OT_FUNC, cfg->label);
+
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), INT);
+
+      parser_add_expr(parser, CALL, 2, tmp, operand);
+      return tmp;
+    }
+
     operand = cfg_get_var(get_cur_cfg(parser), token->lexeme);
     if (operand == NULL) {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE,
-               "Variable %s has not been declared in this scope",
+               "Identifier %s has not been declared in this scope",
                token->lexeme);
       parser_report_error(parser, msg);
     }
