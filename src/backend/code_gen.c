@@ -5,13 +5,13 @@
 
 #define OPERAND(r) &(r).reg[(r).index]
 
-CodeGenerator *new_code_generator(CFG *cfg, FILE *f) {
-  assert(cfg != NULL);
+CodeGenerator *new_code_generator(List *cfgs, FILE *f) {
+  assert(cfgs != NULL);
   assert(f != NULL);
 
   CodeGenerator *code_gen = malloc(sizeof(CodeGenerator));
 
-  code_gen->cfg = cfg;
+  code_gen->cfgs = cfgs;
   code_gen->f = f;
   code_gen->hasError = 0;
 
@@ -50,13 +50,23 @@ CodeGenerator *new_code_generator(CFG *cfg, FILE *f) {
 void generate_code(CodeGenerator *code_gen) {
   assert(code_gen != NULL);
 
-  fprintf(code_gen->f, ".text\n"
-          ".globl main\n"
-          "main:\n"
-          "pushq %%rbp\n"
-          "movq %%rsp, %%rbp\n");
+  fprintf(code_gen->f, ".text\n");
 
-  const Node *cur = code_gen->cfg->bbs->root;
+  const Node *cur_cfg = code_gen->cfgs->root;
+
+  while (cur_cfg != NULL) {
+    visit_cfg(code_gen, cur_cfg->data);
+    cur_cfg = cur_cfg->next;
+  }
+}
+
+void visit_cfg(CodeGenerator *code_gen, const CFG *cfg) {
+  fprintf(code_gen->f, ".globl %s\n"
+          "%s:\n"
+          "pushq %%rbp\n"
+          "movq %%rsp, %%rbp\n", cfg->label, cfg->label);
+
+  const Node *cur = cfg->bbs->root;
   while (cur != NULL) {
     visit_bb(code_gen, cur->data);
     cur = cur->next;

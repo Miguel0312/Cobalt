@@ -27,18 +27,20 @@ typedef struct RegRepr {
 
 typedef struct CodeGenerator {
   FILE *f;
-  CFG *cfg;
+  List *cfgs;
 
   int hasError;
 
   AssemblyOperand A[4], B[4], C[4], D[4];
 } CodeGenerator;
 
-CodeGenerator *new_code_generator(CFG *cfg, FILE *f);
+CodeGenerator *new_code_generator(List *cfgs, FILE *f);
 
 void code_gen_free(CodeGenerator *code_gen);
 
 void generate_code(CodeGenerator *code_gen);
+
+void visit_cfg(CodeGenerator *code_gen, const CFG *cfg);
 
 void visit_bb(CodeGenerator *code_gen, const BasicBlock *bb);
 

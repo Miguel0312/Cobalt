@@ -7,8 +7,11 @@
 
 static int bb_cnt = 0;
 
-CFG *new_cfg(void) {
+CFG *new_cfg(const char *name) {
   CFG *cfg = malloc(sizeof(CFG));
+
+  cfg->label = name;
+  cfg->args = new_list();
 
   cfg->bbs = new_list();
   cfg->bb_stack = new_stack();

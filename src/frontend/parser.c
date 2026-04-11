@@ -25,7 +25,8 @@ Parser *new_parser(List *tokens) {
   parser->cur_token = tokens->root;
   parser->hasError = 0;
   parser->break_dst = parser->continue_dst = NULL;
-  parser->cfg = new_cfg();
+  parser->cfgs = new_list();
+  parser->functions = new_hash_map(string_hash, string_cmp);
 
   parse_program(parser);
 
@@ -36,26 +37,21 @@ void parser_free(Parser *parser) {
   if (parser == NULL)
     return;
 
-  cfg_free(parser->cfg);
+  Node *cur = parser->cfgs->root;
+  while (cur != NULL) {
+    cfg_free(cur->data);
+    cur = cur->next;
+  }
+
+  list_free(parser->cfgs);
+  hash_map_free(parser->functions);
 
   free(parser);
 }
 
 void parse_program(Parser *parser) {
-  parser_consume_token(parser, 1, INT_TS);
-  parser_assert_token_type(parser, IDENTIFIER);
-  const Token *main_token = parser_get_cur(parser);
-  if (strcmp(main_token->lexeme, "main") != 0) {
-    parser_report_error(parser, "Expected function to be called main");
-  }
-  parser_advance(parser);
-  parser_consume_token(parser, 1, LEFT_PAREN);
-  parser_consume_token(parser, 1, RIGHT_PAREN);
-
-  block(parser);
-
-  if (!parser_is_at_end(parser)) {
-    parser_report_error(parser, "Expected EOF");
+  while (!parser_is_at_end(parser)) {
+    function(parser);
   }
 }
 
@@ -73,6 +69,15 @@ Token *parser_peek(const Parser *parser) {
   if (parser_is_at_end(parser))
     return parser_get_cur(parser);
   return parser->cur_token->next->data;
+}
+
+CFG *get_cur_cfg(Parser *parser) {
+  if (parser->cfgs->root == NULL) {
+    parser_report_error(parser, "There are no declared CFGs");
+    return NULL;
+  }
+
+  return parser->cfgs->end->data;
 }
 
 Token *parser_advance(Parser *parser) {
@@ -175,12 +180,34 @@ int parser_consume_if_not(Parser *parser, const TokenType type) {
   return 0;
 }
 
-void parser_add_expr(const Parser *parser, const Operation op, const int n, ...) {
+void parser_add_expr(Parser *parser, const Operation op, const int n, ...) {
   va_list args;
   va_start(args, n);
-  list_append(cfg_get_cur_bb(parser->cfg)->expressions,
+  list_append(cfg_get_cur_bb(get_cur_cfg(parser))->expressions,
               new_expr_v(op, n, args));
   va_end(args);
+}
+
+void function(Parser *parser) {
+  parser_consume_token(parser, 1, INT_TS);
+  parser_assert_token_type(parser, IDENTIFIER);
+  const char *name = parser_get_cur(parser)->lexeme;
+  if (hash_map_get(parser->functions, name) != NULL) {
+    char msg[MSG_BUFFER_SIZE];
+    snprintf(msg, MSG_BUFFER_SIZE, "Function %s has already been declared", name);
+    parser_report_error(parser, msg);
+    return;
+  }
+  
+  CFG *cfg = new_cfg(name);
+  list_append(parser->cfgs, cfg);
+  hash_map_insert(parser->functions, name, cfg);
+
+  parser_advance(parser);
+  parser_consume_token(parser, 1, LEFT_PAREN);
+  parser_consume_token(parser, 1, RIGHT_PAREN);
+
+  block(parser);
 }
 
 Operand *stmt(Parser *parser, int consume_semicolon) {
@@ -224,24 +251,24 @@ Operand *stmt(Parser *parser, int consume_semicolon) {
 
 BasicBlock *block(Parser *parser) {
   parser_consume_token(parser, 1, LEFT_BRACE);
-  BasicBlock *bb = cfg_push_bb(parser->cfg);
-  cfg_push_symbol_table(parser->cfg);
+  BasicBlock *bb = cfg_push_bb(get_cur_cfg(parser));
+  cfg_push_symbol_table(get_cur_cfg(parser));
 
   while (!parser_is_at_end(parser) &&
          parser_get_cur(parser)->type != RIGHT_BRACE) {
     stmt(parser, 1);
   }
 
-  assert(!is_stack_empty(parser->cfg->bb_stack));
+  assert(!is_stack_empty(get_cur_cfg(parser)->bb_stack));
 
   parser_consume_token(parser, 1, RIGHT_BRACE);
 
-  cfg_pop_bb(parser->cfg);
-  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(get_cur_cfg(parser));
+  cfg_pop_bb(get_cur_cfg(parser));
 
-  cfg_pop_symbol_table(parser->cfg);
+  cfg_pop_symbol_table(get_cur_cfg(parser));
 
-  cfg_push_bb(parser->cfg);
+  cfg_push_bb(get_cur_cfg(parser));
 
   return bb;
 }
@@ -251,7 +278,7 @@ Operand *var_decl(Parser *parser) {
   parser_consume_token(parser, 2, INT_TS, CHAR_TS);
   parser_assert_token_type(parser, IDENTIFIER);
   const Token *token = parser_advance(parser);
-  if (cfg_has_var_in_scope(parser->cfg, token->lexeme)) {
+  if (cfg_has_var_in_scope(get_cur_cfg(parser), token->lexeme)) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
              "Variable %s has already been declared in this scope",
@@ -260,7 +287,7 @@ Operand *var_decl(Parser *parser) {
     return NULL;
   }
 
-  Operand *var = cfg_add_var(parser->cfg, data_type, OT_ID, token->lexeme);
+  Operand *var = cfg_add_var(get_cur_cfg(parser), data_type, OT_ID, token->lexeme);
 
   if (parser_get_cur(parser)->type == SEMICOLON) {
     parser_consume_token(parser, 1, SEMICOLON);
@@ -284,12 +311,12 @@ BasicBlock *if_stmt(Parser *parser) {
   Operand *cond = expr(parser);
   parser_consume_token(parser, 1, RIGHT_PAREN);
 
-  BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+  BasicBlock *cur_bb = cfg_get_cur_bb(get_cur_cfg(parser));
   parser_add_expr(parser, TEST, 1, cond);
 
   BasicBlock *true_bb = block(parser);
 
-  BasicBlock *false_bb = cfg_get_cur_bb(parser->cfg);
+  BasicBlock *false_bb = cfg_get_cur_bb(get_cur_cfg(parser));
 
   cur_bb->exit_false = false_bb;
 
@@ -299,7 +326,7 @@ BasicBlock *if_stmt(Parser *parser) {
     } else {
       block(parser);
     }
-    BasicBlock *finally_block = cfg_get_cur_bb(parser->cfg);
+    BasicBlock *finally_block = cfg_get_cur_bb(get_cur_cfg(parser));
     true_bb->exit_true = true_bb->exit_false = finally_block;
   }
 
@@ -311,13 +338,13 @@ void while_stmt(Parser *parser) {
 
   parser_consume_token(parser, 1, LEFT_PAREN);
 
-  BasicBlock *cond_bb = cfg_push_bb(parser->cfg);
+  BasicBlock *cond_bb = cfg_push_bb(get_cur_cfg(parser));
   Operand *cond = expr(parser);
   parser_add_expr(parser, TEST, 1, cond);
 
   parser_consume_token(parser, 1, RIGHT_PAREN);
 
-  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(get_cur_cfg(parser));
 
   BasicBlock *cur_break = parser->break_dst, *cur_continue = parser->continue_dst;
   parser->break_dst = cond_bb, parser->continue_dst = cond_bb;
@@ -327,9 +354,9 @@ void while_stmt(Parser *parser) {
   parser->break_dst = cur_break, parser->continue_dst = cur_continue;
 
   // Bottom basic block of the loop block
-  BasicBlock *exit_bb = parser->cfg->bbs->end->prev->data;
+  BasicBlock *exit_bb = get_cur_cfg(parser)->bbs->end->prev->data;
 
-  BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
+  BasicBlock *finally_bb = cfg_get_cur_bb(get_cur_cfg(parser));
 
   cond_bb->exit_true = loop_bb;
   cond_bb->exit_false = finally_bb;
@@ -342,17 +369,17 @@ void for_stmt(Parser *parser) {
 
   parser_consume_token(parser, 1, LEFT_PAREN);
 
-  cfg_push_symbol_table(parser->cfg);
+  cfg_push_symbol_table(get_cur_cfg(parser));
 
-  cfg_push_bb(parser->cfg);
+  cfg_push_bb(get_cur_cfg(parser));
 
   if (parser_get_cur(parser)->type != SEMICOLON) {
     stmt(parser, 0);
   }
-  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(get_cur_cfg(parser));
   parser_consume_token(parser, 1, SEMICOLON);
 
-  BasicBlock *cond_bb = cfg_push_bb(parser->cfg);
+  BasicBlock *cond_bb = cfg_push_bb(get_cur_cfg(parser));
   Operand *cond = NULL;
   if (parser_get_cur(parser)->type != SEMICOLON) {
     cond = stmt(parser, 0);
@@ -360,14 +387,14 @@ void for_stmt(Parser *parser) {
   if (cond != NULL) {
     parser_add_expr(parser, TEST, 1, cond);
   }
-  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(get_cur_cfg(parser));
   parser_consume_token(parser, 1, SEMICOLON);
 
-  BasicBlock *inc_bb = cfg_push_bb(parser->cfg);
+  BasicBlock *inc_bb = cfg_push_bb(get_cur_cfg(parser));
   if (parser_get_cur(parser)->type != RIGHT_PAREN) {
     stmt(parser, 0);
   }
-  cfg_pop_bb(parser->cfg);
+  cfg_pop_bb(get_cur_cfg(parser));
 
   parser_consume_token(parser, 1, RIGHT_PAREN);
 
@@ -378,9 +405,9 @@ void for_stmt(Parser *parser) {
 
   parser->break_dst = cur_break, parser->continue_dst = cur_continue;
   // Bottom basic block of the loop block
-  BasicBlock *exit_bb = parser->cfg->bbs->end->prev->data;
+  BasicBlock *exit_bb = get_cur_cfg(parser)->bbs->end->prev->data;
 
-  BasicBlock *finally_bb = cfg_get_cur_bb(parser->cfg);
+  BasicBlock *finally_bb = cfg_get_cur_bb(get_cur_cfg(parser));
 
   cond_bb->exit_true = loop_bb;
   cond_bb->exit_false = finally_bb;
@@ -388,7 +415,7 @@ void for_stmt(Parser *parser) {
   exit_bb->exit_true = exit_bb->exit_false = inc_bb;
   inc_bb->exit_true = inc_bb->exit_false = cond_bb;
 
-  cfg_pop_symbol_table(parser->cfg);
+  cfg_pop_symbol_table(get_cur_cfg(parser));
 }
 
 void break_cont_stmt(Parser *parser) {
@@ -430,7 +457,7 @@ Operand *var_assignment(Parser *parser) {
     parser_report_error(parser, "Expression is not assignable");
   }
   const Token *token = parser_advance(parser);
-  Operand *lhs = cfg_get_var(parser->cfg, token->lexeme);
+  Operand *lhs = cfg_get_var(get_cur_cfg(parser), token->lexeme);
   if (lhs == NULL) {
     char msg[MSG_BUFFER_SIZE];
     snprintf(msg, MSG_BUFFER_SIZE,
@@ -445,31 +472,31 @@ Operand *var_assignment(Parser *parser) {
 
   switch (tt) {
     case PLUS_EQUAL: {
-      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), lhs->data_type);
       parser_add_expr(parser, ADD, 3, tmp, lhs, rhs);
       parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
       break;
     }
     case MINUS_EQUAL: {
-      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), lhs->data_type);
       parser_add_expr(parser, SUB, 3, tmp, lhs, rhs);
       parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
       break;
     }
     case STAR_EQUAL: {
-      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), lhs->data_type);
       parser_add_expr(parser, MUL, 3, tmp, lhs, rhs);
       parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
       break;
     }
     case SLASH_EQUAL: {
-      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), lhs->data_type);
       parser_add_expr(parser, DIV, 3, tmp, lhs, rhs);
       parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
       break;
     }
     case PERCENT_EQUAL: {
-      Operand *tmp = cfg_add_tmp(parser->cfg, lhs->data_type);
+      Operand *tmp = cfg_add_tmp(get_cur_cfg(parser), lhs->data_type);
       parser_add_expr(parser, MOD, 3, tmp, lhs, rhs);
       parser_add_expr(parser, ASSIGN, 2, lhs, tmp);
       break;
@@ -492,41 +519,41 @@ Operand *logical_or(Parser *parser) {
 
   while (parser_get_cur(parser)->type == L_OR_TOKEN) {
     parser_advance(parser);
-    BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+    BasicBlock *cur_bb = cfg_get_cur_bb(get_cur_cfg(parser));
     parser_add_expr(parser, TEST, 1, lhs);
 
-    BasicBlock *false_bb = cfg_push_bb(parser->cfg);
+    BasicBlock *false_bb = cfg_push_bb(get_cur_cfg(parser));
 
     Operand *rhs = logical_and(parser);
 
     cur_bb->exit_false = false_bb;
 
     parser_add_expr(parser, TEST, 1, rhs);
-    cfg_pop_bb(parser->cfg);
-    BasicBlock *one_bb = cfg_push_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
+    BasicBlock *one_bb = cfg_push_bb(get_cur_cfg(parser));
 
     cur_bb->exit_true = false_bb->exit_true = one_bb;
 
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
 
     const OperandVal one_val = {.int_val = 1};
     Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
-    list_append(parser->cfg->operands, one);
+    list_append(get_cur_cfg(parser)->operands, one);
     parser_add_expr(parser, ASSIGN, 2, res, one);
 
-    cfg_pop_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
 
-    BasicBlock *zero_bb = cfg_push_bb(parser->cfg);
+    BasicBlock *zero_bb = cfg_push_bb(get_cur_cfg(parser));
     false_bb->exit_false = zero_bb;
     const OperandVal zero_val = {.int_val = 0};
     Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
-    list_append(parser->cfg->operands, zero);
+    list_append(get_cur_cfg(parser)->operands, zero);
     parser_add_expr(parser, ASSIGN, 2, res, zero);
-    cfg_pop_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
 
-    BasicBlock *finally_block = cfg_push_bb(parser->cfg);
+    BasicBlock *finally_block = cfg_push_bb(get_cur_cfg(parser));
     one_bb->exit_false = one_bb->exit_true = finally_block;
 
     lhs = res;
@@ -542,43 +569,43 @@ Operand *logical_and(Parser *parser) {
 
   while (parser_get_cur(parser)->type == L_AND_TOKEN) {
     parser_advance(parser);
-    BasicBlock *cur_bb = cfg_get_cur_bb(parser->cfg);
+    BasicBlock *cur_bb = cfg_get_cur_bb(get_cur_cfg(parser));
     parser_add_expr(parser, TEST, 1, lhs);
 
-    BasicBlock *true_bb = cfg_push_bb(parser->cfg);
+    BasicBlock *true_bb = cfg_push_bb(get_cur_cfg(parser));
 
     Operand *rhs = bitwise_or(parser);
 
     cur_bb->exit_true = true_bb;
 
     parser_add_expr(parser, TEST, 1, rhs);
-    cfg_pop_bb(parser->cfg);
-    BasicBlock *zero_bb = cfg_push_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
+    BasicBlock *zero_bb = cfg_push_bb(get_cur_cfg(parser));
 
     cur_bb->exit_false = true_bb->exit_false = zero_bb;
 
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
 
     const OperandVal zero_val = {.int_val = 0};
     Operand *zero = new_operand(zero_val, data_type, OT_INT, NULL);
-    list_append(parser->cfg->operands, zero);
+    list_append(get_cur_cfg(parser)->operands, zero);
     parser_add_expr(parser, ASSIGN, 2, res, zero);
 
-    cfg_pop_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
 
-    BasicBlock *one_bb = cfg_push_bb(parser->cfg);
+    BasicBlock *one_bb = cfg_push_bb(get_cur_cfg(parser));
     true_bb->exit_true = one_bb;
 
     const OperandVal one_val = {.int_val = 1};
     Operand *one = new_operand(one_val, data_type, OT_INT, NULL);
-    list_append(parser->cfg->operands, one);
+    list_append(get_cur_cfg(parser)->operands, one);
     parser_add_expr(parser, ASSIGN, 2, res, one);
 
-    cfg_pop_bb(parser->cfg);
+    cfg_pop_bb(get_cur_cfg(parser));
 
-    BasicBlock *finally_block = cfg_push_bb(parser->cfg);
+    BasicBlock *finally_block = cfg_push_bb(get_cur_cfg(parser));
     zero_bb->exit_false = zero_bb->exit_true = finally_block;
 
     lhs = res;
@@ -599,7 +626,7 @@ Operand *bitwise_or(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, B_OR, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -619,7 +646,7 @@ Operand *bitwise_xor(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, B_XOR, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -639,7 +666,7 @@ Operand *bitwise_and(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
 
     parser_add_expr(parser, B_AND, 3, res, lhs, rhs);
     lhs = res;
@@ -662,7 +689,7 @@ Operand *cmp(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -701,7 +728,7 @@ Operand *order(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
     tt = parser_get_cur(parser)->type;
@@ -725,7 +752,7 @@ Operand *shift(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -747,7 +774,7 @@ Operand *add_sub(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -784,7 +811,7 @@ Operand *mul_div(Parser *parser) {
     const DataType data_type =
         get_data_type_from_operands(lhs->data_type, rhs->data_type);
 
-    Operand *res = cfg_add_tmp(parser->cfg, data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), data_type);
     parser_add_expr(parser, op, 3, res, lhs, rhs);
     lhs = res;
   }
@@ -815,7 +842,7 @@ Operand *inc_dec(Parser *parser) {
 
     parser_add_expr(parser, TEST, 1, operand);
 
-    Operand *result = cfg_add_tmp(parser->cfg, CHAR);
+    Operand *result = cfg_add_tmp(get_cur_cfg(parser), CHAR);
 
     parser_add_expr(parser, L_NOT, 2, result, operand);
 
@@ -831,7 +858,7 @@ Operand *inc_dec(Parser *parser) {
       parser_report_error(parser, "Expression is not assignable");
       return NULL;
     }
-    Operand *old_res = cfg_add_tmp(parser->cfg, operand->data_type);
+    Operand *old_res = cfg_add_tmp(get_cur_cfg(parser), operand->data_type);
 
     parser_add_expr(parser, ASSIGN, 2, old_res, operand);
 
@@ -854,13 +881,13 @@ Operand *primary_expr(Parser *parser) {
   if (token->type == INT_LITERAL) {
     const OperandVal val = {.int_val = (int) strtol(token->lexeme, NULL, 10)};
     operand = new_operand(val, INT, OT_INT, NULL);
-    list_append(parser->cfg->operands, operand);
+    list_append(get_cur_cfg(parser)->operands, operand);
   } else if (token->type == CHAR_LITERAL) {
     const OperandVal val = {.int_val = char_literal_value(parser, token->lexeme)};
     operand = new_operand(val, CHAR, OT_CHAR, NULL);
-    list_append(parser->cfg->operands, operand);
+    list_append(get_cur_cfg(parser)->operands, operand);
   } else if (token->type == IDENTIFIER) {
-    operand = cfg_get_var(parser->cfg, token->lexeme);
+    operand = cfg_get_var(get_cur_cfg(parser), token->lexeme);
     if (operand == NULL) {
       char msg[MSG_BUFFER_SIZE];
       snprintf(msg, MSG_BUFFER_SIZE,
@@ -875,7 +902,7 @@ Operand *primary_expr(Parser *parser) {
     return expr(parser);
   } else if (token->type == MINUS) {
     Operand *rhs = primary_expr(parser);
-    Operand *res = cfg_add_tmp(parser->cfg, rhs->data_type);
+    Operand *res = cfg_add_tmp(get_cur_cfg(parser), rhs->data_type);
     parser_add_expr(parser, NEG, 2, res, rhs);
     return res;
   } else {

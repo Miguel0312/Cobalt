@@ -59,20 +59,23 @@ int main(const int argc, char **argv) {
     return PARSING_ERROR;
   }
 
-  const Node *bb_cur = parser->cfg->bbs->root;
-  while (bb_cur != NULL) {
-    const BasicBlock *bb = bb_cur->data;
-    const Node *cur = bb->expressions->root;
-    printf("%s:\n", bb->label);
-    while (cur != NULL) {
-      Expr *expr = cur->data;
+  const Node *cfg_cur = parser->cfgs->root;
+  while (cfg_cur != NULL) {
+    CFG *cfg = cfg_cur->data;
+    const Node *bb_cur = cfg->bbs->root;
+    while (bb_cur != NULL) {
+      const BasicBlock *bb = bb_cur->data;
+      const Node *cur = bb->expressions->root;
+      printf("%s:\n", bb->label);
+      while (cur != NULL) {
+        print_expr(cur->data);
+        cur = cur->next;
+      }
 
-      print_expr(expr);
-
-      cur = cur->next;
+      bb_cur = bb_cur->next;
     }
 
-    bb_cur = bb_cur->next;
+    cfg_cur = cfg_cur->next;
   }
 
   char *assembly_file;
@@ -91,7 +94,7 @@ int main(const int argc, char **argv) {
   if (assembly_file_in_heap) {
     free(assembly_file);
   }
-  CodeGenerator *code_gen = new_code_generator(parser->cfg, f);
+  CodeGenerator *code_gen = new_code_generator(parser->cfgs, f);
   fclose(f);
 
   const int hasError = code_gen->hasError;

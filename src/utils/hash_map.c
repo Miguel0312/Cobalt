@@ -3,8 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-HashMap *new_hash_map(unsigned long (*hash_func)(void *),
-                      int (*key_compare)(void *, void *)) {
+HashMap *new_hash_map(unsigned long (*hash_func)(const void *),
+                      int (*key_compare)(const void *, const void *)) {
   HashMap *hash_map = malloc(sizeof(HashMap));
 
   hash_map->N = CO_DEFAULT_HASH_MAP_SIZE;
@@ -44,7 +44,7 @@ Entry *new_entry(void *key, void *val) {
   return entry;
 }
 
-void *hash_map_get(HashMap *hash_map, void *key) {
+void *hash_map_get(HashMap *hash_map, const void *key) {
   int index = hash_map->hash_func(key) % hash_map->N;
   List *row = hash_map->data[index];
   if (row == NULL) {
@@ -64,7 +64,7 @@ void *hash_map_get(HashMap *hash_map, void *key) {
   return NULL;
 }
 
-void hash_map_insert(HashMap *hash_map, void *key, void *value) {
+void hash_map_insert(HashMap *hash_map, const void *key, void *value) {
   int index = hash_map->hash_func(key) % hash_map->N;
   List *row = hash_map->data[index];
   if (row == NULL) {
@@ -91,7 +91,7 @@ void hash_map_insert(HashMap *hash_map, void *key, void *value) {
   list_append(row, entry);
 }
 
-unsigned long string_hash(void *val) {
+unsigned long string_hash(const void *val) {
   unsigned char *str = val;
   unsigned long hash = 5381;
   int c;
@@ -102,4 +102,4 @@ unsigned long string_hash(void *val) {
   return hash;
 }
 
-int string_cmp(void *s1, void *s2) { return strcmp(s1, s2); }
+int string_cmp(const void *s1, const void *s2) { return strcmp(s1, s2); }

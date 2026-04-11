@@ -9,7 +9,9 @@
 typedef struct Parser {
   List *tokens;
   Node *cur_token;
-  CFG *cfg;
+
+  List *cfgs;
+  HashMap *functions;
 
   int hasError;
   BasicBlock *break_dst;
@@ -30,6 +32,8 @@ Token *parser_get_cur(const Parser *parser);
 
 Token *parser_peek(const Parser *parser);
 
+CFG *get_cur_cfg(Parser *parser);
+
 void parser_report_error(Parser *parser, char *msg);
 
 void parser_panic(Parser *parser);
@@ -42,9 +46,11 @@ int parser_consume_if(Parser *parser, TokenType type);
 
 int parser_consume_if_not(Parser *parser, TokenType type);
 
-void parser_add_expr(const Parser *parser, Operation op, int n, ...);
+void parser_add_expr(Parser *parser, Operation op, int n, ...);
 
 int char_literal_value(Parser *parser, const char *lexeme);
+
+void function(Parser *parser);
 
 Operand *stmt(Parser *parser, int consume_semicolon);
 

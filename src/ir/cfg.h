@@ -7,6 +7,9 @@
 #include "utils/stack.h"
 
 typedef struct CFG {
+    const char *label;
+    List *args;
+
     List *bbs;
     Stack *bb_stack;
     // Keep track of all operands to be able to free them (once and only once)
@@ -15,7 +18,7 @@ typedef struct CFG {
     unsigned long offset;
 } CFG;
 
-CFG *new_cfg(void);
+CFG *new_cfg(const char *name);
 
 BasicBlock *cfg_push_bb(const CFG *cfg);
 
